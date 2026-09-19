@@ -1,3 +1,9 @@
+<img width="925" height="709" alt="1" src="https://github.com/user-attachments/assets/20b19cde-b12d-4311-a51e-263b5f052cd8" />
+<img width="924" height="711" alt="2" src="https://github.com/user-attachments/assets/81c3e70f-ad19-4e6a-9edd-867ecd69b642" />
+<img width="913" height="707" alt="3" src="https://github.com/user-attachments/assets/5b816af0-c3ce-4cc0-be28-6d1c98cf1218" />
+<img width="922" height="709" alt="4" src="https://github.com/user-attachments/assets/2af98744-c6b2-4cf9-928c-c8b3d1ffb8c7" />
+
+
 # Mimo OCR
 
 **Açık kaynak · Yerel (cihaz üzerinde) · Çok motorlu masaüstü OCR**
