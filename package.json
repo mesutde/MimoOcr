@@ -1,0 +1,14 @@
+{
+  "name": "mimo-ocr",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Mimo OCR desktop tooling",
+  "scripts": {
+    "tauri": "tauri",
+    "build:app": "tauri build",
+    "dev:app": "cargo run -p mimo-ocr-app"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

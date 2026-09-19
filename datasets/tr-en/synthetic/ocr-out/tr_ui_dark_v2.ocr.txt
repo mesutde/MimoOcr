@@ -1,0 +1,7 @@
+Ayarlar
+
+Motor: Otomatik
+
+Dil: Türkçe
+
+Panoya kopyala: Açık

@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/mimo-ocr-core",
+    "crates/mimo-ocr-engines",
+    "crates/mimo-ocr-capture",
+    "crates/mimo-ocr-cli",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/mimo-ocr/mimo-ocr"
+authors = ["Mimo OCR contributors"]
+description = "Local-first multi-engine desktop OCR (Phase 0 validation)"
+
+[workspace.dependencies]
+mimo-ocr-core = { path = "crates/mimo-ocr-core" }
+mimo-ocr-engines = { path = "crates/mimo-ocr-engines" }
+mimo-ocr-capture = { path = "crates/mimo-ocr-capture" }
+anyhow = "1"
+thiserror = "2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-dialog = "2"
+tauri-build = { version = "2", features = [] }
+arboard = "3"
+base64 = "0.22"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

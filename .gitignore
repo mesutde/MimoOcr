@@ -1,0 +1,29 @@
+# Build
+/target/
+**/target/
+node_modules/
+dist/
+
+# Runtime junk
+captures/
+*.pdb
+.env
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Large optional native runtime (copied for local packaging)
+assets/tesseract-runtime/
+
+# Optional OS model (not required for TR/EN)
+assets/models/tessdata/osd.traineddata
+target/debug/tessdata/osd.traineddata
+target/debug/tesseract-runtime/
+target/debug/tesseract/
+
+# Keep app icons
+!src-tauri/icons/**
+!src-tauri/icons/*.png
+!src-tauri/icons/*.ico

@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mimo OCR</title>
+<style>
+:root{
+  --bg:#0F1115;--panel:#1A1D24;--panel2:#20242D;
+  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.12);
+  --text:#E8EAEF;--muted:#9AA1AE;--faint:#6B7280;
+  --accent:#5B8CFF;--accent-soft:rgba(91,140,255,.14);
+  --green:#4ADE80;--red:#F87171;--amber:#FBBF24;
+  --preview-bg:#0B0D11;--danger-fg:#FCA5A5;
+}
+body[data-theme="light"]{
+  --bg:#F3F5F9;--panel:#fff;--panel2:#EEF1F7;
+  --border:rgba(15,23,42,.1);--border2:rgba(15,23,42,.16);
+  --text:#141820;--muted:#5B6472;--faint:#7A8494;
+  --accent:#3B6FE0;--accent-soft:rgba(59,111,224,.12);
+  --green:#1A9E5A;--red:#D64545;--preview-bg:#E8ECF3;--danger-fg:#D64545;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);border:1px solid rgba(91,140,255,.35);display:grid;place-items:center;font-weight:700;color:var(--accent)}
+.brand h1{font-size:14px;font-weight:650;line-height:1.2}
+.brand .sub{font-size:11px;color:var(--faint)}
+.spacer{flex:1}
+.engine-pick{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:5px 8px}
+.engine-pick label{font-size:11px;color:var(--faint);font-weight:600}
+.engine-pick select{font:inherit;font-weight:600;font-size:12px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:4px 7px;max-width:180px}
+.badge{font-size:11px;padding:4px 9px;border-radius:999px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);color:var(--green)}
+.icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.icon-btn:hover{color:var(--text)}
+.icon-btn.danger{color:var(--danger-fg)}
+.tabs{display:flex;gap:4px;padding:0 14px;border-bottom:1px solid var(--border);background:var(--panel)}
+.tab{font:inherit;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panels{border-bottom:1px solid var(--border);background:var(--panel)}
+.panel{display:none;padding:12px 14px;gap:10px;flex-direction:column}
+.panel.active{display:flex}
+.actions,.field{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button.primary{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:9px;padding:8px 14px;cursor:pointer;font-size:13px}
+button.primary:disabled{opacity:.45}
+button.ghost{font:inherit;font-size:13px;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;cursor:pointer}
+button.ghost:disabled{opacity:.45}
+label{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+select,input[type=text]{font:inherit;font-size:13px;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:6px 9px}
+input[type=text]{min-width:220px;flex:1}
+.tip{font-size:12px;color:var(--faint)}
+.main{flex:1;display:grid;grid-template-columns:1.05fr 1fr;min-height:0}
+.pane{min-height:0;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.pane:last-child{border-right:none}
+.pane-head{padding:8px 12px;font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.preview{flex:1;background:var(--preview-bg);display:grid;place-items:center;overflow:auto;padding:10px;position:relative}
+.preview img{max-width:100%;max-height:100%;border:none!important;outline:none!important}
+.preview .empty{color:var(--faint);font-size:13px;text-align:center;line-height:1.65;max-width:320px}
+textarea{flex:1;width:100%;resize:none;border:none;outline:none;background:transparent;color:var(--text);padding:12px;font-family:Consolas,monospace;font-size:13px;line-height:1.5}
+footer{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--border);background:var(--panel);font-size:12px;color:var(--muted)}
+footer strong{color:var(--text)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--faint);display:inline-block;margin-right:6px}
+.dot.ok{background:var(--green)}.dot.busy{background:var(--amber)}.dot.err{background:var(--red)}
+.credits-inline{font-size:11px;color:var(--faint)}
+.credits-inline a{color:var(--accent);text-decoration:none}
+.li-icon{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:3px;background:var(--accent);color:#fff;border-radius:2px;font-size:9px;font-weight:700;text-align:center;line-height:12px}
+#engineMenu{display:none;position:fixed;z-index:200;min-width:200px;background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#engineMenu.show{display:block}
+#engineMenu .em-title{font-size:11px;color:var(--faint);padding:6px 10px;font-weight:600}
+#engineMenu button{display:block;width:100%;text-align:left;border:none;background:transparent;color:var(--text);font:inherit;font-size:13px;padding:8px 10px;border-radius:7px;cursor:pointer}
+#engineMenu button:hover{background:var(--accent-soft);color:var(--accent)}
+#cropModal{display:none;position:absolute;inset:0;z-index:50;background:rgba(8,10,14,.92);flex-direction:column}
+#cropModal.show{display:flex}
+#cropBar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);font-size:13px}
+#cropWrap{flex:1;overflow:auto;display:grid;place-items:center;padding:10px}
+#cropStage{position:relative;cursor:crosshair;user-select:none;touch-action:none}
+#cropImg{display:block;max-width:100%;max-height:calc(100vh - 100px);pointer-events:none}
+#rectLayer{position:absolute;inset:0;pointer-events:none}
+.sel-rect{position:absolute;border:2px solid var(--accent);background:rgba(91,140,255,.15);pointer-events:none}
+.sel-rect.committed{border-color:var(--green);background:rgba(74,222,128,.12)}
+#crossH,#crossV{position:absolute;display:none;pointer-events:none;background:rgba(91,140,255,.55)}
+#crossH{height:1px;left:0;right:0}#crossV{width:1px;top:0;bottom:0}
+#cropSize{position:absolute;display:none;background:var(--accent);color:#fff;font:11px Consolas;padding:3px 7px;border-radius:5px;pointer-events:none}
+#batchListWrap{max-height:140px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+.batch-list{padding:4px;min-height:40px}
+.batch-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;font-size:13px}
+.batch-item:hover{background:rgba(255,255,255,.04)}
+.batch-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.batch-item .rm{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--danger-fg);cursor:pointer;font-size:14px}
+.batch-empty{padding:10px;color:var(--faint);font-size:12px}
+.folder-btn{
+  width:36px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel2);color:var(--text);cursor:pointer;font-size:16px;
+  display:inline-grid;place-items:center;flex:0 0 auto;
+}
+.folder-btn:hover{border-color:rgba(91,140,255,.45);background:var(--accent-soft)}
+label:has(.folder-btn){gap:6px}
+body[data-theme="light"] button.primary{color:#fff}
+@media(max-width:760px){.main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">M</div>
+  <div class="brand"><h1>Mimo OCR</h1><div class="sub" id="brandSub">Local · Offline OCR</div></div>
+  <div class="spacer"></div>
+  <div class="engine-pick">
+    <label for="uiLang" id="uiLangLabel">UI</label>
+    <select id="uiLang" style="min-width:130px"></select>
+  </div>
+  <div class="engine-pick">
+    <label for="langs" id="ocrLangLabel">OCR</label>
+    <select id="langs" style="min-width:170px">
+      <option value="tur,eng" selected>🇹🇷 Türkçe + 🇺🇸 English</option>
+      <option value="tur">🇹🇷 Türkçe</option>
+      <option value="eng">🇺🇸 English</option>
+    </select>
+  </div>
+  <div class="engine-pick">
+    <label for="engine" id="enginePickLabel">Engine</label>
+    <select id="engine"><option value="tesseract-cli" selected>Tesseract</option></select>
+  </div>
+  <div class="badge" id="privacyBadge">on device</div>
+  <button class="icon-btn" id="btnTheme" title="Theme">◐</button>
+  <button class="icon-btn danger" id="btnExit" title="Exit">✕</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="yakala" data-i18n="tabCapture">Capture</button>
+  <button class="tab" data-tab="belge" data-i18n="tabDocument">Document</button>
+  <button class="tab" data-tab="toplu" data-i18n="tabBatch">Batch</button>
+</div>
+
+<div class="panels">
+  <div class="panel active" id="panel-yakala">
+    <div class="actions">
+      <button class="primary" id="btnRegion" data-i18n="btnRegion">Region select</button>
+      <button class="ghost" id="btnFull" data-i18n="btnFull">Screen OCR</button>
+      <button class="ghost" id="btnRegionSnap" data-i18n="btnPreview">Preview select</button>
+      <div class="spacer"></div>
+      <label><span data-i18n="lblQuality">Quality</span>
+        <select id="quality">
+          <option value="balanced" selected data-i18n="optBalanced">Balanced</option>
+          <option value="accurate" data-i18n="optAccurate">High (2×)</option>
+        </select>
+      </label>
+      <button class="ghost" id="btnCopy" data-i18n="btnCopy">Copy</button>
+      <button class="ghost" id="btnCancel" disabled data-i18n="btnCancel">Cancel</button>
+    </div>
+    <div class="tip" id="tipCapture">Right-click source image to re-OCR with another engine</div>
+  </div>
+  <div class="panel" id="panel-belge">
+    <div class="field">
+      <label style="flex:1"><span data-i18n="lblFilePath">File path</span>
+        <input type="text" id="docPath" placeholder="C:\...\invoice.png" />
+      </label>
+      <button class="ghost" id="btnBrowse" data-i18n="btnBrowse">Browse…</button>
+      <button class="primary" id="btnDoc" data-i18n="btnDoc">OCR document</button>
+    </div>
+  </div>
+  <div class="panel" id="panel-toplu">
+    <div class="field">
+      <button class="primary" id="btnBatchPick" data-i18n="btnBatchAdd">Add files…</button>
+      <label><span data-i18n="lblFormat">Format</span>
+        <select id="batchFormat"><option value="md" selected>Markdown</option><option value="txt">TXT</option></select>
+      </label>
+      <label><span data-i18n="lblSaveMode">Save</span>
+        <select id="batchMode">
+          <option value="separate" selected data-i18n="optSeparate">Separate</option>
+          <option value="combined" data-i18n="optCombined">Combine</option>
+        </select>
+      </label>
+      <label><span data-i18n="lblEngine">Engine</span>
+        <select id="batchEngine"><option value="tesseract-cli" selected>Tesseract</option></select>
+      </label>
+      <label><span data-i18n="lblQuality">Quality</span>
+        <select id="batchQuality">
+          <option value="balanced" selected data-i18n="optBalanced">Balanced</option>
+          <option value="accurate" data-i18n="optAccurate">High</option>
+        </select>
+      </label>
+      <button class="primary" id="btnBatchRun" disabled data-i18n="btnBatchRun">Start batch</button>
+    </div>
+    <div class="field" style="align-items:center">
+      <input type="text" id="batchOutDir" placeholder="C:\...\mimo-output" style="flex:1;min-width:200px" />
+      <button type="button" class="icon-btn folder-btn" id="btnBatchOutDir" title="Choose output folder">📁</button>
+    </div>
+    <div class="field" style="margin-top:2px">
+      <span class="tip" id="batchStatus" data-i18n="batchNoFiles">No files</span>
+    </div>
+    <div id="batchListWrap"><div id="batchList" class="batch-list"></div></div>
+    <div class="field" style="justify-content:flex-start;margin-top:6px">
+      <button class="ghost" id="btnBatchClear" disabled data-i18n="btnClear">Clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="pane">
+    <div class="pane-head"><span data-i18n="paneSource">Source</span> <span id="srcKind" style="text-transform:none;color:var(--accent)"></span><span id="imgMeta"></span></div>
+    <div class="preview" id="preview">
+      <div class="empty" id="previewEmpty">Capture an image, then <strong>right-click</strong> here to re-OCR with another engine.</div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-head"><span data-i18n="paneText">Text</span> <span id="textMeta"></span></div>
+    <textarea id="text" placeholder="OCR result…"></textarea>
+  </div>
+</div>
+
+<div id="engineMenu"><div class="em-title" id="emTitle">Re-OCR with engine</div></div>
+
+<footer>
+  <span><span class="dot" id="statusDot"></span><span id="statusLine">ready</span></span>
+  <label style="margin-left:8px"><span data-i18n="lblMonitor">Monitor</span>
+    <select id="monitor" style="font-size:12px;padding:3px 6px"></select>
+  </label>
+  <div class="spacer"></div>
+  <span><span data-i18n="lblEngine">Engine</span> <strong id="stEngine">—</strong></span>
+  <span id="stLang"></span><span id="stMs"></span>
+  <div class="spacer"></div>
+  <div class="credits-inline">Built with MiMo-X Pro · Mesut Demirci ·
+    <a href="https://www.linkedin.com/in/mesutdemirci/" target="_blank" rel="noopener"><i class="li-icon">in</i>mesutdemirci</a>
+  </div>
+</footer>
+
+<div id="cropModal">
+  <div id="cropBar">
+    <strong data-i18n="cropTitle">Preview</strong>
+    <span class="tip">Drag select · Ctrl+drag add</span>
+    <div class="spacer"></div>
+    <span class="tip" id="cropInfo"></span>
+    <button class="ghost" id="cropClear" data-i18n="btnClear">Clear</button>
+    <button class="ghost" id="cropCancel" data-i18n="btnCancel">Cancel</button>
+    <button class="primary" id="cropOk" disabled data-i18n="btnOcr">OCR</button>
+  </div>
+    <div id="cropWrap"><div id="cropStage" tabindex="0">
+    <img id="cropImg" alt="" draggable="false" />
+    <div id="crossH"></div><div id="crossV"></div>
+    <div id="rectLayer"></div><div id="cropSize"></div>
+  </div></div>
+</div>
+
+<script>
+const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
+const $ = (id) => document.getElementById(id);
+
+const UI_LANGS = [
+  { code:"en", label:"English", flag:"🇺🇸" },
+  { code:"tr", label:"Türkçe", flag:"🇹🇷" },
+  { code:"es", label:"Español", flag:"🇪🇸" },
+  { code:"fr", label:"Français", flag:"🇫🇷" },
+  { code:"de", label:"Deutsch", flag:"🇩🇪" },
+  { code:"pt", label:"Português", flag:"🇧🇷" },
+  { code:"zh", label:"中文", flag:"🇨🇳" },
+  { code:"ja", label:"日本語", flag:"🇯🇵" },
+  { code:"ar", label:"العربية", flag:"🇸🇦" },
+  { code:"ru", label:"Русский", flag:"🇷🇺" },
+  { code:"hi", label:"हिन्दी", flag:"🇮🇳" },
+];
+const I18N = {
+  en:{brandSub:"Local · Offline OCR",uiLangShort:"UI",lblEngine:"Engine",lblOcrLang:"OCR",lblMonitor:"Monitor",lblQuality:"Quality",lblFormat:"Format",lblSaveMode:"Save",lblFilePath:"File path",lblOutDir:"Output folder",tabCapture:"Capture",tabDocument:"Document",tabBatch:"Batch",btnRegion:"Region select",btnFull:"Screen OCR",btnPreview:"Preview select",btnCancel:"Cancel",btnCopy:"Copy",btnBrowse:"Browse…",btnDoc:"OCR document",btnBatchAdd:"Add files…",btnBatchOutDir:"Output folder",btnClear:"Clear",btnBatchRun:"Start batch",btnOcr:"OCR",optBalanced:"Balanced",optAccurate:"High (2×)",optSeparate:"Separate",optCombined:"Combine",paneSource:"Source",paneText:"Text",statusReady:"ready",statusWorking:"Working…",statusDevice:"on device",kindCapture:"Capture",kindDocument:"Document",kindBatch:"Batch",batchNoFiles:"No files",cropTitle:"Preview",emTitle:"Re-OCR with engine"},
+  tr:{brandSub:"Yerel · Çevrimdışı OCR",uiLangShort:"Dil",lblEngine:"Motor",lblOcrLang:"OCR",lblMonitor:"Monitör",lblQuality:"Kalite",lblFormat:"Format",lblSaveMode:"Kayıt",lblFilePath:"Dosya yolu",lblOutDir:"Çıktı klasörü",tabCapture:"Yakala",tabDocument:"Belge",tabBatch:"Toplu",btnRegion:"Bölge seç",btnFull:"Ekran OCR",btnPreview:"Önizleme seç",btnCancel:"İptal",btnCopy:"Kopyala",btnBrowse:"Dosya seç…",btnDoc:"Belgeyi OCR'la",btnBatchAdd:"Dosya ekle…",btnBatchOutDir:"Çıktı klasörü",btnClear:"Temizle",btnBatchRun:"Toplu başlat",btnOcr:"OCR",optBalanced:"Dengeli",optAccurate:"Yüksek (2×)",optSeparate:"Ayrı ayrı",optCombined:"Birleştir",paneSource:"Kaynak",paneText:"Metin",statusReady:"hazır",statusWorking:"Çalışıyor…",statusDevice:"cihazda",kindCapture:"Yakala",kindDocument:"Belge",kindBatch:"Toplu",batchNoFiles:"Dosya yok",cropTitle:"Önizleme",emTitle:"Motor ile yeniden OCR"},
+};
+let uiLang="en";
+function detectUiLang(){
+  try{const s=localStorage.getItem("mimo-ui-lang");if(s&&I18N[s])return s;}catch(_){}
+  const n=String(navigator.language||"en").toLowerCase().split("-")[0];
+  return I18N[n]?n:"en";
+}
+function t(k){const p=I18N[uiLang]||I18N.en;return p[k]!=null?p[k]:(I18N.en[k]!=null?I18N.en[k]:"");}
+function applyI18n(lang){
+  uiLang=I18N[lang]?lang:"en";
+  try{localStorage.setItem("mimo-ui-lang",uiLang);}catch(_){}
+  document.documentElement.lang=uiLang==="zh"?"zh-CN":uiLang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k=el.getAttribute("data-i18n"); if(k) el.textContent=t(k);
+  });
+  $("brandSub").textContent=t("brandSub");
+  $("uiLangLabel").textContent=t("uiLangShort");
+  $("ocrLangLabel").textContent=t("lblOcrLang");
+  $("enginePickLabel").textContent=t("lblEngine");
+  $("emTitle").textContent=t("emTitle");
+  $("statusLine").textContent=t("statusReady");
+  fillUiLangSelect();
+  paintStore();
+}
+function fillUiLangSelect(){
+  const sel=$("uiLang"); if(!sel)return;
+  const prev=sel.value||uiLang;
+  sel.innerHTML="";
+  for(const L of UI_LANGS){
+    const o=document.createElement("option");
+    o.value=L.code; o.textContent=(L.flag||"")+" "+L.label;
+    sel.appendChild(o);
+  }
+  sel.value=[...sel.options].some(o=>o.value===prev)?prev:"en";
+}
+
+const DEFAULT_ENGINE="tesseract-cli";
+const empty=()=>({plain_text:"",image_png_base64:"",engine:"",language:"",elapsed_ms:null,width:0,height:0,offline:true});
+const store={capture:empty(),document:empty()};
+let activeTab="yakala";
+let jobSource="capture";
+let knownEngines=["tesseract-cli","windows-ocr","auto","mock"];
+let batchFiles=[];
+const crop={open:false,imgW:0,imgH:0,startX:0,startY:0,rect:null,regions:[],snapshotB64:"",dragging:false,ctrlAdd:false};
+
+function engineValue(){return ($("engine")&&$("engine").value)||DEFAULT_ENGINE;}
+function isAccurate(){return $("quality")&&$("quality").value==="accurate";}
+function commonOcrArgs(){
+  return {langs:$("langs").value,accurate:isAccurate(),engine:engineValue()};
+}
+function currentStoreKind(){return activeTab==="belge"?"document":"capture";}
+function setStatus(msg,state){
+  $("statusLine").textContent=msg||t("statusReady");
+  $("statusDot").className="dot "+(state==="error"?"err":state==="working"?"busy":"ok");
+}
+function setBusy(b){
+  ["btnFull","btnRegion","btnRegionSnap","btnDoc","btnBrowse","btnBatchPick"].forEach(id=>{
+    if($(id))$(id).disabled=b;
+  });
+  if($("btnCancel"))$("btnCancel").disabled=!b;
+}
+function paintBusy(){return new Promise(r=>setTimeout(r,30));}
+async function safeInvoke(cmd,args){
+  setBusy(true);setStatus(t("statusWorking"),"working");await paintBusy();
+  try{return await invoke(cmd,args);}finally{setBusy(false);}
+}
+function activateTab(name){
+  activeTab=name;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+  document.querySelectorAll(".panels > .panel").forEach(p=>p.classList.toggle("active",p.id==="panel-"+name));
+  paintStore();
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>activateTab(b.dataset.tab)));
+
+function paintStore(){
+  const kind=currentStoreKind();
+  const dto=store[kind]||empty();
+  $("srcKind").textContent=t(kind==="document"?"kindDocument":kind==="batch"?"kindBatch":"kindCapture");
+  if(dto.image_png_base64){
+    $("preview").innerHTML='<img id="srcImg" src="data:image/png;base64,'+dto.image_png_base64+'" alt="" draggable="false" />';
+  }else if(!dto.plain_text){
+    $("preview").innerHTML='<div class="empty">'+(kind==="document"?"OCR a file on the Document tab.":"Capture an image, then <strong>right-click</strong> the preview to re-OCR with another engine.")+"</div>";
+  }
+  $("text").value=dto.plain_text||"";
+  $("stEngine").textContent=dto.engine||engineValue();
+  $("stLang").textContent=dto.language||"";
+  $("stMs").textContent=dto.elapsed_ms!=null?dto.elapsed_ms+" ms":"";
+  $("imgMeta").textContent=dto.width?" · "+dto.width+"×"+dto.height:"";
+  $("textMeta").textContent=" · "+((dto.plain_text||"").length)+" ch";
+  $("privacyBadge").textContent=t("statusDevice");
+}
+function saveResult(dto){
+  if(!dto)return;
+  // Accept both Rust snake_case and camelCase field names from Tauri
+  const norm={
+    plain_text: dto.plain_text ?? dto.plainText ?? "",
+    image_png_base64: dto.image_png_base64 ?? dto.imagePngBase64 ?? "",
+    engine: dto.engine ?? "",
+    language: dto.language ?? "",
+    elapsed_ms: dto.elapsed_ms ?? dto.elapsedMs ?? null,
+    width: dto.width ?? 0,
+    height: dto.height ?? 0,
+    offline: dto.offline !== false,
+  };
+  const kind=jobSource==="document"?"document":"capture";
+  store[kind]=Object.assign(empty(),norm);
+  paintStore();
+}
+
+/* Right-click engine menu */
+function engineLabel(id){
+  return {auto:"Auto","tesseract-cli":"Tesseract","windows-ocr":"Windows OCR",mock:"Mock"}[id]||id;
+}
+function hideEngineMenu(){$("engineMenu").classList.remove("show");}
+function fillEngineMenu(){
+  const menu=$("engineMenu");
+  menu.querySelectorAll("button[data-engine]").forEach(b=>b.remove());
+  $("emTitle").textContent=t("emTitle");
+  knownEngines.forEach(id=>{
+    const b=document.createElement("button");
+    b.type="button";b.dataset.engine=id;b.textContent=engineLabel(id);
+    b.onclick=(e)=>{e.stopPropagation();reocrWithEngine(id);};
+    menu.appendChild(b);
+  });
+  const sep=document.createElement("div");
+  sep.style.cssText="height:1px;background:var(--border);margin:6px 4px";
+  menu.appendChild(sep);
+  const copyBtn=document.createElement("button");
+  copyBtn.type="button";
+  copyBtn.dataset.engine="__copy";
+  copyBtn.textContent=uiLang==="tr"?"Kopyala":"Copy";
+  copyBtn.onclick=async(e)=>{
+    e.stopPropagation();hideEngineMenu();
+    try{
+      await invoke("copy_text",{text:$("text").value||""});
+      setStatus(uiLang==="tr"?"kopyalandı":"copied","idle");
+    }catch(err){setStatus(String(err),"error");}
+  };
+  menu.appendChild(copyBtn);
+}
+async function reocrWithEngine(engineId){
+  hideEngineMenu();
+  const dto=store.capture;
+  if(!dto||!dto.image_png_base64||!dto.width||!dto.height){
+    setStatus("No source image for re-OCR","error");return;
+  }
+  jobSource="capture";activateTab("yakala");
+  setBusy(true);setStatus(t("statusWorking")+" · "+engineLabel(engineId),"working");
+  try{
+    // Tauri 2 invoke keys are camelCase
+    const out=await invoke("ocr_snapshot_regions",{
+      imagePngBase64:dto.image_png_base64,
+      regions:[{x:0,y:0,width:dto.width,height:dto.height}],
+      snapWidth:dto.width,
+      snapHeight:dto.height,
+      engine:engineId,
+      langs:$("langs").value,
+      accurate:isAccurate()
+    });
+    saveResult(out);
+    setStatus(engineLabel(out.engine||engineId)+" · "+(out.elapsed_ms||0)+" ms","done");
+  }catch(e){setStatus(String(e),"error");}
+  finally{setBusy(false);}
+}
+$("preview").addEventListener("contextmenu",(e)=>{
+  e.preventDefault();
+  if(!store.capture.image_png_base64){setStatus("No source image","error");return;}
+  fillEngineMenu();
+  const menu=$("engineMenu");
+  menu.classList.add("show");
+  const mw=menu.offsetWidth||200,mh=menu.offsetHeight||160;
+  menu.style.left=Math.min(e.clientX,window.innerWidth-mw-8)+"px";
+  menu.style.top=Math.min(e.clientY,window.innerHeight-mh-8)+"px";
+});
+document.addEventListener("click",hideEngineMenu);
+
+async function refreshMonitors(){
+  try{
+    const ms=await invoke("list_monitors");
+    const sel=$("monitor");sel.innerHTML="";
+    ms.forEach(m=>{
+      const o=document.createElement("option");
+      o.value=String(m.index);
+      o.textContent="#"+m.index+" "+m.width+"×"+m.height;
+      if(m.is_primary)o.selected=true;
+      sel.appendChild(o);
+    });
+  }catch(_){}
+}
+function fillEngineSelect(sel,engines,preferT){
+  if(!sel)return;
+  const prev=sel.value;sel.innerHTML="";
+  const add=(v,l)=>{const o=document.createElement("option");o.value=v;o.textContent=l;sel.appendChild(o);};
+  if(engines.includes("tesseract-cli")||preferT)add("tesseract-cli","Tesseract");
+  if(engines.includes("windows-ocr"))add("windows-ocr","Windows OCR");
+  if(!preferT)add("auto","Auto");
+  if(engines.includes("mock"))add("mock","Mock");
+  engines.forEach(e=>{if(!["tesseract-cli","windows-ocr","mock"].includes(e))add(e,e);});
+  if(preferT)sel.value="tesseract-cli";
+  else sel.value=[...sel.options].some(o=>o.value===prev)?prev:(engines.includes("tesseract-cli")?"tesseract-cli":"auto");
+}
+async function refreshStatus(){
+  try{
+    const st=await invoke("engine_status");
+    const engines=st.engines||[];
+    fillEngineSelect($("engine"),engines,false);
+    fillEngineSelect($("batchEngine"),engines,true);
+    knownEngines=["auto"];
+    ["tesseract-cli","windows-ocr","mock"].forEach(e=>{if(engines.includes(e))knownEngines.push(e);});
+    engines.forEach(e=>{if(!knownEngines.includes(e))knownEngines.push(e);});
+    $("stEngine").textContent=engineValue();
+  }catch(_){}
+}
+
+async function runFull(){
+  jobSource="capture";activateTab("yakala");
+  try{
+    const dto=await safeInvoke("ocr_full_screen",{monitor:Number($("monitor").value||0),...commonOcrArgs()});
+    saveResult(dto);await invoke("copy_text",{text:dto.plain_text||""});
+    setStatus((dto.engine||"")+" · "+dto.elapsed_ms+" ms","done");
+  }catch(e){setStatus(String(e),"error");}
+}
+async function runDoc(){
+  jobSource="document";activateTab("belge");
+  const path=($("docPath").value||"").trim();
+  if(!path){setStatus("Enter a file path","error");return;}
+  try{
+    const dto=await safeInvoke("ocr_path",{path,...commonOcrArgs()});
+    saveResult(dto);await invoke("copy_text",{text:dto.plain_text||""});
+    setStatus("document · "+dto.elapsed_ms+" ms","done");
+  }catch(e){setStatus(String(e),"error");}
+}
+
+/* Crop preview */
+function clearRectLayer(){$("rectLayer").innerHTML="";$("cropSize").style.display="none";}
+function closeCrop(){
+  crop.open=false;$("cropModal").classList.remove("show");clearRectLayer();
+  $("cropOk").disabled=true;crop.rect=null;crop.regions=[];crop.snapshotB64="";crop.dragging=false;
+}
+function pointerToImage(e){
+  const img=$("cropImg"),r=img.getBoundingClientRect();
+  const nw=img.naturalWidth||1,nh=img.naturalHeight||1;
+  return {x:Math.max(0,Math.min(nw-1,(e.clientX-r.left)*(nw/Math.max(1,r.width)))),
+          y:Math.max(0,Math.min(nh-1,(e.clientY-r.top)*(nh/Math.max(1,r.height))))};
+}
+function clampRegion(r){
+  const nw=crop.imgW||($("cropImg")||{}).naturalWidth||0;
+  const nh=crop.imgH||($("cropImg")||{}).naturalHeight||0;
+  if(!nw||!nh)return null;
+  const x0=Math.max(0,Math.min(nw-1,Math.round(r.x)));
+  const y0=Math.max(0,Math.min(nh-1,Math.round(r.y)));
+  const x1=Math.max(x0+4,Math.min(nw,Math.round(r.x+r.w)));
+  const y1=Math.max(y0+4,Math.min(nh,Math.round(r.y+r.h)));
+  return {x:x0,y:y0,width:x1-x0,height:y1-y0};
+}
+function imgToStage(rect){
+  const img=$("cropImg"),stage=$("cropStage");
+  const ir=img.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+  const scale=(ir.width||1)/(img.naturalWidth||1);
+  const w=rect.w!=null?rect.w:(rect.width||0);
+  const h=rect.h!=null?rect.h:(rect.height||0);
+  return {left:(ir.left-sr.left)+rect.x*scale,top:(ir.top-sr.top)+rect.y*scale,width:w*scale,height:h*scale};
+}
+function renderRegions(includeDraft){
+  const layer=$("rectLayer");layer.innerHTML="";
+  const paint=(rect,cls)=>{
+    const box=imgToStage(rect);
+    const el=document.createElement("div");
+    el.className="sel-rect"+(cls?" "+cls:"");
+    el.style.cssText="left:"+box.left+"px;top:"+box.top+"px;width:"+box.width+"px;height:"+box.height+"px";
+    layer.appendChild(el);return box;
+  };
+  crop.regions.forEach(r=>paint(r,"committed"));
+  let last=null; if(includeDraft&&crop.rect)last=paint(crop.rect,"");
+  $("cropInfo").textContent=crop.regions.length+" / "+crop.imgW+"×"+crop.imgH;
+  $("cropOk").disabled=crop.regions.length===0;
+  return last;
+}
+function drawCropRect(a,b){
+  const x0=Math.min(a.x,b.x),y0=Math.min(a.y,b.y);
+  const x1=Math.max(a.x,b.x),y1=Math.max(a.y,b.y);
+  crop.rect={x:x0,y:y0,w:x1-x0,h:y1-y0};
+  const box=renderRegions(true);
+  if(box&&crop.rect.w>=1){
+    const s=$("cropSize");s.style.display="block";
+    s.style.left=(box.left+box.width+8)+"px";s.style.top=(box.top+box.height+8)+"px";
+    s.textContent=Math.round(crop.rect.w)+"×"+Math.round(crop.rect.h);
+  }
+}
+function commitDraft(){
+  if(!crop.rect||crop.rect.w<4||crop.rect.h<4)return false;
+  const c=clampRegion(crop.rect);
+  if(!c||c.width<4||c.height<4)return false;
+  // Ctrl (or held during drag) → add; otherwise replace
+  if(!crop.ctrlAdd) crop.regions=[c];
+  else crop.regions.push(c);
+  crop.rect=null;
+  renderRegions(false);
+  $("cropOk").disabled=crop.regions.length===0;
+  return true;
+}
+function bindCropEvents(){
+  const stage=$("cropStage");
+  let ctrlDuringDrag=false;
+  stage.onmousemove=e=>{
+    if(!crop.open)return;
+    $("crossH").style.display="block";$("crossV").style.display="block";
+    const sr=stage.getBoundingClientRect();
+    $("crossH").style.top=(e.clientY-sr.top)+"px";
+    $("crossV").style.left=(e.clientX-sr.left)+"px";
+    if(e.ctrlKey||e.metaKey) ctrlDuringDrag=true;
+    if(crop.dragging)drawCropRect({x:crop.startX,y:crop.startY},pointerToImage(e));
+  };
+  stage.onmousedown=e=>{
+    if(!crop.open||e.button!==0)return;e.preventDefault();
+    const p=pointerToImage(e);
+    crop.dragging=true;
+    ctrlDuringDrag=!!(e.ctrlKey||e.metaKey);
+    crop.ctrlAdd=ctrlDuringDrag;
+    crop.startX=p.x;crop.startY=p.y;drawCropRect(p,p);
+  };
+  stage.onmouseup=e=>{
+    if(!crop.open)return;
+    crop.dragging=false;
+    crop.ctrlAdd=ctrlDuringDrag||!!(e.ctrlKey||e.metaKey);
+    drawCropRect({x:crop.startX,y:crop.startY},pointerToImage(e));
+    commitDraft();
+    ctrlDuringDrag=false;
+  };
+  stage.onmouseleave=()=>{};
+  $("cropImg").ondragstart=e=>e.preventDefault();
+}
+async function startLiveRegionPick(){
+  jobSource="capture";activateTab("yakala");
+  try{
+    await invoke("open_live_region_pick",{
+      monitor:Number($("monitor").value||0),langs:$("langs").value,
+      engine:engineValue(),accurate:isAccurate()
+    });
+    setStatus("Drag on desktop · Esc cancel","working");
+  }catch(e){setStatus(String(e),"error");}
+}
+async function startRegionPick(){
+  jobSource="capture";activateTab("yakala");
+  setBusy(true);setStatus("capturing…","working");
+  try{
+    const snap=await invoke("start_region_pick",{monitor:Number($("monitor").value||0)});
+    crop.open=true;crop.imgW=snap.width;crop.imgH=snap.height;
+    crop.regions=[];crop.snapshotB64=snap.image_png_base64||snap.imagePngBase64||"";crop.rect=null;crop.dragging=false;
+    const img=$("cropImg");
+    img.onload=()=>{crop.imgW=img.naturalWidth||snap.width;crop.imgH=img.naturalHeight||snap.height;renderRegions(false);};
+    img.src="data:image/png;base64,"+(snap.image_png_base64||snap.imagePngBase64||"");
+    $("cropModal").classList.add("show");$("cropOk").disabled=true;clearRectLayer();
+    setStatus("Drag to select · Ctrl+drag adds more regions","working");
+    bindCropEvents();
+    // Focus stage so Ctrl is captured reliably
+    try{stage.focus&&stage.focus();}catch(_){}
+  }catch(e){setStatus(String(e),"error");closeCrop();}
+  finally{setBusy(false);}
+}
+async function confirmCrop(){
+  if(crop.rect)commitDraft();
+  if(!crop.regions.length){setStatus("Select a region first","error");return;}
+  // clampRegion already stores {x,y,width,height}; also accept draft {w,h}
+  const regions=crop.regions.map(r=>({
+    x:Math.round(r.x||0),
+    y:Math.round(r.y||0),
+    width:Math.round(r.width!=null?r.width:(r.w||0)),
+    height:Math.round(r.height!=null?r.height:(r.h||0)),
+  })).filter(c=>c.width>=4&&c.height>=4);
+  if(!regions.length){setStatus("Select a larger region","error");return;}
+  const snap=crop.snapshotB64;
+  const w=crop.imgW,h=crop.imgH;
+  const n=regions.length;
+  closeCrop();
+  jobSource="capture";
+  try{
+    if(!snap){setStatus("Snapshot missing — try Preview select again","error");return;}
+    setStatus(n+" region OCR…","working");
+    const dto=await safeInvoke("ocr_snapshot_regions",{
+      imagePngBase64:snap,
+      regions,
+      snapWidth:w,
+      snapHeight:h,
+      ...commonOcrArgs()
+    });
+    saveResult(dto);
+    await invoke("copy_text",{text:dto.plain_text||""});
+    setStatus(n+" region · "+(dto.elapsed_ms||0)+" ms · "+(dto.plain_text||"").length+" ch","done");
+  }catch(e){setStatus(String(e),"error");}
+}
+
+/* Batch */
+function fileExt(p){const n=String(p||"");const i=n.lastIndexOf(".");return i>=0?n.slice(i+1).toLowerCase():"";}
+function addBatchFiles(paths){
+  const seen=new Set(batchFiles.map(p=>p.replace(/\//g,"\\")));
+  let added=0;
+  (paths||[]).forEach(p=>{
+    if(!p)return;const n=p.replace(/\//g,"\\");
+    if(seen.has(n))return;batchFiles.push(p);seen.add(n);added++;
+  });
+  return added;
+}
+function renderBatchList(){
+  const el=$("batchList");
+  if(!batchFiles.length){
+    el.innerHTML='<div class="batch-empty">Images (OCR) · PDF/DOCX/XLSX/PPTX/TXT (text). Add files to append.</div>';
+    $("btnBatchRun").disabled=true;$("btnBatchClear").disabled=true;
+    $("batchStatus").textContent=t("batchNoFiles");return;
+  }
+  el.innerHTML=batchFiles.map((f,i)=>{
+    const n=f.split(/[\\/]/).pop()||f;
+    return '<div class="batch-item"><span class="name">'+(i+1)+". "+n+'</span><button type="button" class="rm" data-rm="'+i+'">×</button></div>';
+  }).join("");
+  $("btnBatchRun").disabled=false;$("btnBatchClear").disabled=false;
+  $("batchStatus").textContent=batchFiles.length+(uiLang==="tr"?" dosya":" files");
+}
+$("batchList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-rm]"); if(!b)return;
+  batchFiles.splice(Number(b.dataset.rm),1);renderBatchList();
+});
+async function pickBatchFiles(){
+  try{
+    let selected=null;
+    if(window.__TAURI__?.dialog?.open){
+      selected=await window.__TAURI__.dialog.open({multiple:true,filters:[{name:"Files",extensions:["png","jpg","jpeg","bmp","tif","tiff","webp","pdf","docx","xlsx","pptx","txt","md"]}]});
+    }
+    if(!selected)return;
+    const inc=Array.isArray(selected)?selected.filter(Boolean):typeof selected==="string"?[selected]:selected.path?[selected.path]:[];
+    const n=addBatchFiles(inc);renderBatchList();
+    setStatus(n? "+"+n+" · "+batchFiles.length:"no new files","idle");
+  }catch(e){setStatus(String(e),"error");}
+}
+async function pickBatchOutDir(){
+  try{
+    let s=null;
+    if(window.__TAURI__?.dialog?.open) s=await window.__TAURI__.dialog.open({directory:true,multiple:false});
+    if(!s)return;
+    $("batchOutDir").value=typeof s==="string"?s:(s.path||"");
+  }catch(e){setStatus(String(e),"error");}
+}
+async function runBatch(){
+  if(!batchFiles.length){setStatus("Add files first","error");return;}
+  let outDir=($("batchOutDir").value||"").trim()||"C:\\Users\\Public\\Documents\\MimoOCR-out";
+  $("batchOutDir").value=outDir;
+  setBusy(true);setStatus("batch…","working");
+  try{
+    const dto=await invoke("batch_process_files",{
+      files:batchFiles,
+      outDir,
+      format:$("batchFormat").value||"md",
+      mode:$("batchMode").value||"separate",
+      engine:($("batchEngine")&&$("batchEngine").value)||"tesseract-cli",
+      langs:$("langs").value,
+      accurate:($("batchQuality")&&$("batchQuality").value)==="accurate"
+    });
+    const ok=dto.ok_count ?? dto.okCount ?? 0;
+    const fail=dto.fail_count ?? dto.failCount ?? 0;
+    const folder=dto.out_dir ?? dto.outDir ?? outDir;
+    const files=dto.output_files ?? dto.outputFiles ?? [];
+    $("text").value="Batch\nOK "+ok+" / ERR "+fail+"\n"+folder+"\n"+(files||[]).join("\n");
+    $("srcKind").textContent=t("kindBatch");
+    setStatus("batch "+ok+"/"+(ok+fail),"done");
+  }catch(e){setStatus(String(e),"error");}
+  finally{setBusy(false);renderBatchList();}
+}
+
+$("btnFull").onclick=runFull;
+$("btnRegion").onclick=startLiveRegionPick;
+$("btnRegionSnap").onclick=startRegionPick;
+$("btnDoc").onclick=runDoc;
+$("btnExit").onclick=async()=>{try{await invoke("quit_app");}catch(_){window.close();}};
+$("btnCancel").onclick=async()=>{try{await invoke("cancel_ocr");setStatus("cancelled","idle");}catch(_){}};
+$("btnCopy").onclick=async()=>{try{await invoke("copy_text",{text:$("text").value||""});setStatus("copied","idle");}catch(e){setStatus(String(e),"error");}};
+$("btnBrowse").onclick=async()=>{
+  activateTab("belge");
+  try{
+    let s=null;
+    if(window.__TAURI__?.dialog?.open) s=await window.__TAURI__.dialog.open({multiple:false,filters:[{name:"Images",extensions:["png","jpg","jpeg","bmp","webp"]}]});
+    if(!s)return;
+    $("docPath").value=typeof s==="string"?s:(s.path||"");
+    if($("docPath").value)await runDoc();
+  }catch(e){setStatus(String(e),"error");}
+};
+$("btnBatchPick").onclick=pickBatchFiles;
+$("btnBatchOutDir").onclick=pickBatchOutDir;
+$("btnBatchClear").onclick=()=>{batchFiles=[];renderBatchList();setStatus("cleared","idle");};
+$("btnBatchRun").onclick=runBatch;
+$("cropCancel").onclick=()=>{closeCrop();setStatus("cancelled","idle");};
+$("cropClear").onclick=()=>{crop.regions=[];crop.rect=null;renderRegions(false);};
+$("cropOk").onclick=confirmCrop;
+$("engine").onchange=()=>{$("stEngine").textContent=engineValue();};
+$("btnTheme").onclick=()=>{
+  const cur=document.body.getAttribute("data-theme")==="light"?"light":"dark";
+  const next=cur==="light"?"dark":"light";
+  document.body.setAttribute("data-theme",next);
+  try{localStorage.setItem("mimo-theme",next);}catch(_){}
+};
+$("uiLang").onchange=()=>applyI18n($("uiLang").value);
+
+listen("region-selected",async(ev)=>{
+  const r=ev.payload;try{await invoke("show_main_window");}catch(_){}
+  jobSource="capture";
+  try{
+    const dto=await safeInvoke("ocr_region",{monitor:r.monitor??0,x:r.x,y:r.y,width:r.width,height:r.height,...commonOcrArgs()});
+    saveResult(dto);await invoke("copy_text",{text:dto.plain_text||""});
+    setStatus("region · "+dto.elapsed_ms+" ms","done");
+  }catch(e){setStatus(String(e),"error");}
+});
+listen("region-select-cancelled",()=>setStatus("cancelled","idle"));
+listen("ocr-result",e=>{if(jobSource!=="document")jobSource="capture";saveResult(e.payload);});
+listen("ocr-status",ev=>{const p=ev.payload||{};setStatus(p.message||p.state||"",p.state);});
+listen("batch-progress",ev=>{const p=ev.payload||{};$("batchStatus").textContent=(p.index||"")+"/"+(p.total||"")+" "+(p.name||"");});
+window.mimoStartRegionPick=()=>startLiveRegionPick();
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeCrop();hideEngineMenu();}});
+
+let theme="dark";try{theme=localStorage.getItem("mimo-theme")||"dark";}catch(_){}
+document.body.setAttribute("data-theme",theme);
+uiLang=detectUiLang();
+applyI18n(uiLang);
+refreshMonitors();
+refreshStatus();
+paintStore();
+</script>
+</body>
+</html>
