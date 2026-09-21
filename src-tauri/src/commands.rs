@@ -583,7 +583,36 @@ pub async fn ocr_path(
     let path2 = path.clone();
     let handle = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<OcrResultDto, String> {
-        let img = OcrImage::from_path(&PathBuf::from(&path2)).map_err(|e| e.to_string())?;
+        let pb = PathBuf::from(&path2);
+        let ext = pb
+            .extension()
+            .map(|s| s.to_string_lossy().to_ascii_lowercase())
+            .unwrap_or_default();
+
+        // Non-image documents (incl. UYAP UDF): extract text, no pixel OCR.
+        if !is_image_ext(&ext) && is_extractable_ext(&ext) {
+            emit_status(&handle, "working", format!("extract {ext}…"));
+            let text = extract_via_python(&pb)?;
+            let dto = OcrResultDto {
+                engine: "extract".into(),
+                language: Some(ext.clone()),
+                elapsed_ms: 0,
+                mean_confidence: None,
+                plain_text: text.clone(),
+                width: 0,
+                height: 0,
+                image_png_base64: String::new(),
+                tessdata: resolve_tessdata(None).map(|p| p.display().to_string()),
+                offline: true,
+            };
+            if let Ok(mut last) = handle.state::<AppState>().last_image_path.lock() {
+                *last = Some(path2);
+            }
+            store_and_emit(&handle, &dto, OcrDocument::empty("extract"));
+            return Ok(dto);
+        }
+
+        let img = OcrImage::from_path(&pb).map_err(|e| e.to_string())?;
         emit_status(&handle, "working", format!("OCR {}…", img.source_name));
         let (dto, doc) = run_ocr(&img, langs, accurate.unwrap_or(false), engine, &cancel)?;
         if let Ok(mut last) = handle.state::<AppState>().last_image_path.lock() {
@@ -943,7 +972,7 @@ fn is_image_ext(ext: &str) -> bool {
 fn is_extractable_ext(ext: &str) -> bool {
     matches!(
         ext,
-        "pdf" | "docx" | "xlsx" | "pptx" | "rtf" | "txt" | "md" | "csv" | "json" | "log" | "xml" | "html" | "htm"
+        "pdf" | "docx" | "xlsx" | "pptx" | "udf" | "rtf" | "txt" | "md" | "csv" | "json" | "log" | "xml" | "html" | "htm"
     )
 }
 

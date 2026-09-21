@@ -1,7 +1,7 @@
 {
   "name": "mimo-ocr",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mimo OCR desktop tooling",
   "scripts": {
     "tauri": "tauri",

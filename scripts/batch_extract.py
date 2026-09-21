@@ -3,16 +3,17 @@
 
 Usage: batch_extract.py <file>
 Prints UTF-8 text to stdout. Exit 0 on success.
-Supported: pdf, docx, xlsx, txt, md, csv, json, rtf(simple)
+Supported: pdf, docx, xlsx, pptx, udf (UYAP), txt, md, csv, json, rtf(simple)
 """
 
 from __future__ import annotations
 
-import json
+import html
 import sys
 import zipfile
 import re
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 
 def read_plain(path: Path) -> str:
@@ -106,13 +107,101 @@ def extract_pptx(path: Path) -> str:
         return "\n".join(parts)
 
 
+def _strip_rtf(rtf: str) -> str:
+    rtf = re.sub(r"\\'[0-9a-fA-F]{2}", lambda m: chr(int(m.group(0)[2:], 16)), rtf)
+    rtf = re.sub(r"\\[a-zA-Z]+-?\d* ?", " ", rtf)
+    rtf = re.sub(r"[{}]", "", rtf)
+    rtf = re.sub(r"\s+", " ", rtf)
+    return rtf.strip()
+
+
 def extract_rtf(path: Path) -> str:
-    raw = read_plain(path)
-    # crude RTF strip
-    raw = re.sub(r"\\[a-z]+-?\d* ?", " ", raw)
-    raw = re.sub(r"[{}]", "", raw)
-    raw = re.sub(r"\s+", " ", raw)
-    return raw.strip()
+    return _strip_rtf(read_plain(path))
+
+
+def _xml_local(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def _collect_text_xml(xml_bytes: bytes) -> str:
+    parts: list[str] = []
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError:
+        text = xml_bytes.decode("utf-8", errors="replace")
+        chunks = re.findall(r">([^<>]+)<", text)
+        return "\n".join(html.unescape(c).strip() for c in chunks if c.strip())
+
+    para_tags = {"paragraph", "p", "textparagraph", "par", "block", "content"}
+    line_tags = {"line", "br", "tab"}
+
+    def walk(node, buf: list[str]) -> None:
+        name = _xml_local(node.tag).lower()
+        if node.text:
+            t = node.text.strip()
+            if t:
+                buf.append(t)
+        for child in list(node):
+            cname = _xml_local(child.tag).lower()
+            if cname in {"signature", "binary", "imagedata", "image"}:
+                continue
+            if name in para_tags:
+                walk(child, buf)
+                buf.append("\n")
+            elif cname in line_tags:
+                walk(child, buf)
+                buf.append("\n")
+            else:
+                walk(child, buf)
+            if child.tail:
+                tt = child.tail.strip()
+                if tt:
+                    buf.append(tt)
+
+    buf: list[str] = []
+    walk(root, buf)
+    text = "".join(buf)
+    raw = xml_bytes.decode("utf-8", errors="replace")
+    for frag in re.findall(r"\{\\rtf1(?:[^{}]|\{[^{}]*\})*\}", raw):
+        st = _strip_rtf(frag)
+        if st:
+            text += "\n" + st
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def extract_udf(path: Path) -> str:
+    """UYAP Doküman Formatı (.udf): ZIP + content.xml (+ signature.p7s, binary/).
+
+    Justice Ministry UYAP container (not optical-disc UDF).
+    """
+    if not zipfile.is_zipfile(path):
+        raise RuntimeError("not a UYAP UDF zip container (or file is corrupt)")
+    with zipfile.ZipFile(path, "r") as z:
+        names = z.namelist()
+        candidates = ["content.xml", "Content.xml", "CONTENT.XML", "content/Content.xml"]
+        xml_name = next((c for c in candidates if c in names), None)
+        if xml_name is None:
+            xml_name = next((n for n in names if n.lower().endswith("content.xml")), None)
+        if xml_name is None:
+            xml_name = next(
+                (n for n in names if n.lower().endswith(".xml") and "sign" not in n.lower()),
+                None,
+            )
+        if xml_name is None:
+            raise RuntimeError(f"UDF content.xml not found; entries={names[:20]}")
+
+        text = _collect_text_xml(z.read(xml_name))
+        has_sig = any(n.lower().endswith(".p7s") or "signature" in n.lower() for n in names)
+        binaries = [n for n in names if n.lower().startswith("binary/")]
+        meta = [f"[UYAP UDF] content={xml_name}"]
+        if has_sig:
+            meta.append("[e-signature present — not exported as text]")
+        if binaries:
+            meta.append(f"[embedded objects: {len(binaries)}]")
+        body = text if text.strip() else "[content.xml has no extractable text — image-only?]"
+        return "\n".join(meta) + "\n\n" + body
 
 
 def main() -> int:
@@ -123,22 +212,24 @@ def main() -> int:
     if not path.exists():
         print(f"file not found: {path}", file=sys.stderr)
         return 1
-    ext = path.suffix.lower()
+    ext = path.suffix.lower().lstrip(".")
     try:
-        if ext == ".pdf":
+        if ext == "pdf":
             text = extract_pdf(path)
-        elif ext == ".docx":
+        elif ext == "docx":
             text = extract_docx(path)
-        elif ext == ".xlsx":
+        elif ext == "xlsx":
             text = extract_xlsx(path)
-        elif ext == ".pptx":
+        elif ext == "pptx":
             text = extract_pptx(path)
-        elif ext == ".rtf":
+        elif ext == "udf":
+            text = extract_udf(path)
+        elif ext == "rtf":
             text = extract_rtf(path)
-        elif ext in {".txt", ".md", ".csv", ".json", ".log", ".xml", ".html", ".htm"}:
+        elif ext in {"txt", "md", "csv", "json", "log", "xml", "html", "htm"}:
             text = read_plain(path)
         else:
-            print(f"unsupported type: {ext}", file=sys.stderr)
+            print(f"unsupported type: .{ext}", file=sys.stderr)
             return 3
         sys.stdout.write(text)
         return 0

@@ -29,7 +29,8 @@ Capture text from the screen, images, and documents. Export as **TXT / Markdown*
 | **Ekran OCR** | Tam ekran tek tuş |
 | **Önizleme seç** | Uygulama içi kopya; **Ctrl** ile çoklu alan |
 | **Belge OCR** | PNG/JPG/BMP/TIFF dosya yolu |
-| **Toplu** | Çoklu görsel + PDF/DOCX/XLSX/PPTX metni |
+| **Belge metin** | PDF, DOCX, XLSX, **UDF (UYAP 0.2.0)** |
+| **Toplu** | Çoklu görsel + PDF/DOCX/XLSX/PPTX/**UDF (UYAP)** metni |
 | **Çıktı** | TXT / Markdown · ayrı ayrı veya birleşik |
 | **Motorlar** | Tesseract · Windows OCR · Mock (genişletilebilir) |
 | **Sağ tık** | Kaynak görsele sağ tık → farklı motorla yeniden OCR |
@@ -52,7 +53,7 @@ Capture text from the screen, images, and documents. Export as **TXT / Markdown*
 | **Çoklu alan (Ctrl)** | Evet | Sınırlı | Temel | Hayır |
 | **Sağ tık motor değiştirme** | Evet | Hayır | Hayır | Hayır |
 | **Toplu + TXT/MD (LLM)** | Evet | Zayıf | Hayır | Hayır |
-| **PDF/Office metin** | Evet (toplu) | Sınırlı | Hayır | Hayır |
+| **PDF/Office/UDF metin** | Evet (toplu + belge; UYAP `.udf` = ZIP + content.xml) | Hayır | Hayır | Hayır |
 | **Yerel / offline** | Evet | Evet | Evet | Evet |
 | **UI sadeliği** | Sekmeli, motor seçimi header’da | Özellik yoğun | Sade | Çok sade |
 | **Hedef kullanıcı** | LLM girdisi + günlük OCR | Windows iş akışı | Hızlı panoya kopyala | Hızlı snip |
@@ -65,10 +66,10 @@ Capture text from the screen, images, and documents. Export as **TXT / Markdown*
 
 ### Windows — Setup (MSI / NSIS)
 
-Releases sayfasından indirin:
+Releases sayfasından indirin (en güncel):
 
-- `Mimo OCR_0.1.0_x64_en-US.msi`
-- `Mimo OCR_0.1.0_x64-setup.exe` (NSIS)
+- `Mimo OCR_0.2.0_x64_en-US.msi`
+- `Mimo OCR_0.2.0_x64-setup.exe` (NSIS)
 
 Kurulumdan sonra masaüstü kısayolu / Başlat menüsü.
 
@@ -141,8 +142,8 @@ node_modules\.bin\tauri.cmd build
 
 ```
 target\release\mimo-ocr-app.exe
-target\release\bundle\msi\Mimo OCR_0.1.0_x64_en-US.msi
-target\release\bundle\nsis\Mimo OCR_0.1.0_x64-setup.exe
+target\release\bundle\msi\Mimo OCR_0.2.0_x64_en-US.msi
+target\release\bundle\nsis\Mimo OCR_0.2.0_x64-setup.exe
 ```
 
 **Portable ZIP** hazırlamak için:
@@ -255,6 +256,46 @@ Ortak sonuç modeli: tüm motorlar `OcrDocument` / `OcrRegion` üretir; arayüz 
 
 ---
 
+## Sürüm 0.2.0 — UYAP UDF desteği / v0.2.0 — UYAP UDF
+
+**Yeni:** Türkiye Adalet Bakanlığı **UYAP Doküman Formatı (`.udf`)** belge ve toplu iş akışına eklendi.
+
+### UDF nedir?
+UYAP’ta dilekçe, karar, tebligat, tutanak gibi adli belgeleri saklamak için kullanılan **özel konteyner**.  
+Teknik olarak **ZIP + `content.xml`** (bazen `signature.p7s` ve `binary/`).  
+CD/DVD’deki Universal Disk Format **karıştırılmamalıdır.**
+
+### Mimo OCR 0.2.0 ne yapıyor?
+| İş | Açıklama |
+|----|----------|
+| **UDF okuma** | `.udf` dosyası ZIP olarak açılır; `content.xml` metni çıkarılır |
+| **Belge sekmesi** | UDF yolunu seçin → metin görünümü (LLM’e girdi) |
+| **Toplu sekmesi** | UDF + görsel/PDF/Office birlikte; TXT/MD çıktısı |
+| **Paragraf yapısı** | `paragraph` / satır düğümlerinden okunabilir metin |
+| **İmza katmanı** | `signature.p7s` varsa “imza mevcut” notu; imza **metne çevrilmez / doğrulanmaz** |
+| **Gömülü nesneler** | `binary/` sayısı not edilir; resimler ayrı OCR’a girmez |
+| **RTF parçaları** | XML içindeki zengin metin parçaları sade metne indirgenir |
+
+### Örnek çıktı
+```
+[UYAP UDF] content=content.xml
+[e-signature present — not exported as text]
+
+İSTİNAF DİLEKÇESİ
+İstanbul 2. Asliye Hukuk Mahkemesi...
+Davacı: ...
+```
+
+### Sınırlar
+- Şifreli / bozuk UDF açılmaz  
+- **Yalnız görsel** taranmış belgede `content.xml` metin yoksa metin boş kalır; UYAP Editörü ile PDF’e çevirip görsel olarak işleyin  
+- Yargı sonucu doğrulaması / imza teyidi **bu sürümde yok**
+
+### Dosya seçiciler
+Belge ve Toplu filtrelerinde **`.udf`** uzantısı listelenir.
+
+---
+
 ## Yol haritası (özet)
 
 - [x] Phase 0 — motor arayüzü, tessdata, ölçüm
@@ -262,6 +303,7 @@ Ortak sonuç modeli: tüm motorlar `OcrDocument` / `OcrRegion` üretir; arayüz 
 - [x] Windows OCR motoru
 - [x] Toplu MD/TXT + LLM çıktısı
 - [x] i18n + tema + çok motorlu sağ tık
+- [x] **v0.2.0 — UYAP UDF metin çıkarımı (belge + toplu)**
 - [ ] leptess in-process Tesseract
 - [ ] ort + PaddleOCR kalite paketi
 - [ ] macOS/Linux resmî release

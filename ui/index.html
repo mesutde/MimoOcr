@@ -194,6 +194,7 @@ body[data-theme="light"] button.primary{color:#fff}
     <div id="batchListWrap"><div id="batchList" class="batch-list"></div></div>
     <div class="field" style="justify-content:flex-start;margin-top:6px">
       <button class="ghost" id="btnBatchClear" disabled data-i18n="btnClear">Clear</button>
+      <span class="tip" style="margin-left:8px">Supported: images (OCR) · PDF · DOCX · XLSX · PPTX · <strong>UDF (UYAP)</strong> · TXT/MD</span>
     </div>
   </div>
 </div>
@@ -690,7 +691,7 @@ async function pickBatchFiles(){
   try{
     let selected=null;
     if(window.__TAURI__?.dialog?.open){
-      selected=await window.__TAURI__.dialog.open({multiple:true,filters:[{name:"Files",extensions:["png","jpg","jpeg","bmp","tif","tiff","webp","pdf","docx","xlsx","pptx","txt","md"]}]});
+      selected=await window.__TAURI__.dialog.open({multiple:true,filters:[{name:"Files",extensions:["png","jpg","jpeg","bmp","tif","tiff","webp","pdf","docx","xlsx","pptx","udf","txt","md"]}]});
     }
     if(!selected)return;
     const inc=Array.isArray(selected)?selected.filter(Boolean):typeof selected==="string"?[selected]:selected.path?[selected.path]:[];
@@ -743,7 +744,7 @@ $("btnBrowse").onclick=async()=>{
   activateTab("belge");
   try{
     let s=null;
-    if(window.__TAURI__?.dialog?.open) s=await window.__TAURI__.dialog.open({multiple:false,filters:[{name:"Images",extensions:["png","jpg","jpeg","bmp","webp"]}]});
+    if(window.__TAURI__?.dialog?.open) s=await window.__TAURI__.dialog.open({multiple:false,filters:[{name:"Documents / images",extensions:["png","jpg","jpeg","bmp","webp","pdf","docx","xlsx","udf","txt","md"]}]});
     if(!s)return;
     $("docPath").value=typeof s==="string"?s:(s.path||"");
     if($("docPath").value)await runDoc();

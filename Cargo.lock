@@ -2471,7 +2471,7 @@ checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
 name = "mimo-ocr-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2491,7 +2491,7 @@ dependencies = [
 
 [[package]]
 name = "mimo-ocr-capture"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "image",
  "mimo-ocr-core",
@@ -2501,7 +2501,7 @@ dependencies = [
 
 [[package]]
 name = "mimo-ocr-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2516,7 +2516,7 @@ dependencies = [
 
 [[package]]
 name = "mimo-ocr-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "image",
  "serde",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "mimo-ocr-engines"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "image",
