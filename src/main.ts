@@ -296,6 +296,57 @@ listen<Record<string, unknown>>("batch-progress", (ev) =>
 renderVideoFiles();
 refreshVideoReq();
 
+// ---------------------------------------------------------------------------
+// Motor durumu (Tesseract yoksa uyarı bandı)
+// ---------------------------------------------------------------------------
+
+interface EngineStatus {
+  ok: boolean;
+  path?: string | null;
+  tessdata?: string | null;
+  error?: string | null;
+}
+
+const engineWarn = $("engine-warn");
+const engineWarnText = $("engine-warn-text");
+const btnEnginePath = $<HTMLButtonElement>("btn-engine-path");
+const btnEngineRescan = $<HTMLButtonElement>("btn-engine-rescan");
+
+function renderEngineStatus(st: EngineStatus) {
+  (engineWarn as HTMLElement).hidden = st.ok;
+  if (!st.ok) engineWarnText.textContent = st.error ?? "Tesseract bulunamadı.";
+}
+
+async function refreshEngineStatus() {
+  try {
+    renderEngineStatus(await invoke<EngineStatus>("engine_status"));
+  } catch (e) {
+    renderEngineStatus({ ok: false, error: String(e) });
+  }
+}
+
+btnEngineRescan.addEventListener("click", async () => {
+  renderEngineStatus(await invoke<EngineStatus>("rescan_engine"));
+  refreshVideoReq();
+});
+
+btnEnginePath.addEventListener("click", async () => {
+  const sel = await open({
+    multiple: false,
+    filters: [{ name: "Tesseract", extensions: ["exe"] }],
+  });
+  if (typeof sel === "string") {
+    try {
+      renderEngineStatus(await invoke<EngineStatus>("set_engine_path", { path: sel }));
+    } catch (e) {
+      renderEngineStatus({ ok: false, error: String(e) });
+    }
+    refreshVideoReq();
+  }
+});
+
+refreshEngineStatus();
+
 // Bölge yakalama tamamlandığında overlay penceresinden gelen sonuç
 listen<OcrDocument>("ocr-result", (ev) => showResult(ev.payload));
 listen<string>("ocr-error", (ev) => setStatus(ev.payload, "err"));

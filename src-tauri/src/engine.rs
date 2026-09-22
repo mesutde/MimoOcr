@@ -145,13 +145,35 @@ pub struct TesseractCli {
 }
 
 impl TesseractCli {
+    /// Kullanicinin dosya seciciyle kaydettigi tesseract.exe yolu
+    /// (`%APPDATA%/mimo-ocr/tesseract-path.txt`).
+    pub fn saved_path_file() -> Option<PathBuf> {
+        dirs_config_file("tesseract-path.txt")
+    }
+
     pub fn detect() -> Result<Self, OcrError> {
+        // 1) Ortam degiskeni (en yuksek oncelik)
         if let Ok(p) = std::env::var("MIMO_TESSERACT") {
             let path = PathBuf::from(p);
             if path.is_file() {
                 return Ok(Self::with_exe(path));
             }
         }
+        // 2) Kullanicinin kaydettigi yol
+        if let Some(f) = Self::saved_path_file() {
+            if let Ok(saved) = std::fs::read_to_string(&f) {
+                let path = PathBuf::from(saved.trim());
+                if path.is_file() {
+                    return Ok(Self::with_exe(path));
+                }
+            }
+        }
+        // 3) Kurulumla gomulu runtime (exe yanindaki tesseract-runtime/)
+        //    Boylece Tesseract ayrica kurulmamis PC'de de uygulama calisir.
+        if let Some(bundled) = bundled_runtime_exe() {
+            return Ok(Self::with_exe(bundled));
+        }
+        // 4) Sistem kurulumlari + PATH
         for cand in [
             r"C:\Program Files\Tesseract-OCR\tesseract.exe",
             r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
@@ -175,6 +197,10 @@ impl TesseractCli {
             tessdata_dir: resolve_tessdata_dir(&exe_path),
             exe_path,
         }
+    }
+
+    pub fn exe_path(&self) -> &PathBuf {
+        &self.exe_path
     }
 
     fn run_tesseract(
@@ -256,6 +282,55 @@ impl OcrEngine for TesseractCli {
     }
 }
 
+/// Calisan exe'nin bulundugu dizin (kurulu/portable uygulamada kaynak kokudur).
+fn exe_dir() -> Option<PathBuf> {
+    std::env::current_exe().ok()?.parent().map(|p| p.to_path_buf())
+}
+
+/// Kurulumla gomulu `tesseract-runtime/tesseract.exe` varsa dondurur.
+fn bundled_runtime_exe() -> Option<PathBuf> {
+    let dir = exe_dir()?;
+    for cand in [
+        dir.join("tesseract-runtime/tesseract.exe"),
+        dir.join("tesseract-runtime").join("tesseract.exe"),
+    ] {
+        if cand.is_file() {
+            return Some(cand);
+        }
+    }
+    // Gelistirme agacinda cargo run ile calisirken: depo kokundeki assets/
+    let mut d = dir;
+    for _ in 0..8 {
+        let cand = d.join("assets/tesseract-runtime/tesseract.exe");
+        if cand.is_file() {
+            return Some(cand);
+        }
+        if !d.pop() {
+            break;
+        }
+    }
+    None
+}
+
+/// Kullanicibasina config dizininde bir dosya yolu (yoksa olusturmaya calisir).
+fn dirs_config_file(name: &str) -> Option<PathBuf> {
+    #[cfg(windows)]
+    let base = std::env::var("APPDATA").ok().map(PathBuf::from)?;
+    #[cfg(not(windows))]
+    let base = std::env::var("XDG_CONFIG_HOME")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|h| PathBuf::from(h).join(".config"))
+        })?;
+    #[cfg(not(any(windows, unix)))]
+    let base: PathBuf = return None;
+    let dir = base.join("mimo-ocr");
+    std::fs::create_dir_all(&dir).ok()?;
+    Some(dir.join(name))
+}
 /// Öncelik: `MIMO_TESSDATA` → depo kökündeki kullanıcı düzeyi tessdata
 /// (tur+eng burada tutulur) → exe yanındaki sistem tessdata'sı.
 /// Seçilen dizinin `configs/txt` içermesi gerekir; yoksa exe yanındaki

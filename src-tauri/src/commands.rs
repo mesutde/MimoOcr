@@ -9,15 +9,98 @@ use crate::capture;
 use crate::engine::{OcrDocument, OcrEngine, OcrError, OcrOptions, TesseractCli};
 
 pub struct AppState {
-    pub engine: Arc<TesseractCli>,
+    /// Tesseract bulunamazsa `None` olur; uygulama yine de acilir,
+    /// OCR istekleri anlasilir bir hata dondurur.
+    pub engine: Mutex<Option<Arc<TesseractCli>>>,
     pub options: Mutex<OcrOptions>,
     /// Son başarılı bölge seçimi (overlay yerel mantıksal koordinatları)
     pub last_region: Mutex<Option<[f64; 4]>>,
 }
 
-fn tessdata_dir(state: &State<'_, AppState>) -> Result<std::path::PathBuf, OcrError> {
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineStatus {
+    pub ok: bool,
+    pub path: Option<String>,
+    pub tessdata: Option<String>,
+    pub error: Option<String>,
+}
+
+fn engine_status_of(engine: &Option<Arc<TesseractCli>>) -> EngineStatus {
+    match engine {
+        Some(e) => EngineStatus {
+            ok: true,
+            path: Some(e.exe_path().display().to_string()),
+            tessdata: e.tessdata_dir.as_ref().map(|p| p.display().to_string()),
+            error: None,
+        },
+        None => EngineStatus {
+            ok: false,
+            path: None,
+            tessdata: None,
+            error: Some(
+                "Tesseract bulunamadı. Kurulumla gelen tesseract-runtime eksikse \
+                 Tesseract 5 kurun ya da exe yolunu secin."
+                    .into(),
+            ),
+        },
+    }
+}
+
+/// Arayuzdeki uyari bandini besler.
+#[tauri::command]
+pub fn engine_status(state: State<'_, AppState>) -> EngineStatus {
+    engine_status_of(&state.engine.lock().unwrap())
+}
+
+/// Motoru yeniden tara (Tesseract sonradan kurulmussa yeniden baslatma gerekmez).
+#[tauri::command]
+pub fn rescan_engine(state: State<'_, AppState>) -> EngineStatus {
+    let found = TesseractCli::detect().ok().map(Arc::new);
+    *state.engine.lock().unwrap() = found;
+    engine_status_of(&state.engine.lock().unwrap())
+}
+
+/// Kullanicinin sectigi tesseract.exe yolunu dogrulayip kalici kaydeder.
+#[tauri::command]
+pub fn set_engine_path(state: State<'_, AppState>, path: String) -> Result<EngineStatus, OcrError> {
+    let p = std::path::PathBuf::from(&path);
+    if !p.is_file() {
+        return Err(OcrError::Image("Seçilen dosya bulunamadı.".into()));
+    }
+    // Calistigini dogrula (--version)
+    let mut cmd = std::process::Command::new(&p);
+    cmd.arg("--version");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    let ok = cmd.output().map(|o| o.status.success()).unwrap_or(false);
+    if !ok {
+        return Err(OcrError::Image("Bu dosya Tesseract olarak çalıştırılamadı.".into()));
+    }
+    if let Some(f) = TesseractCli::saved_path_file() {
+        std::fs::write(f, path.as_bytes()).map_err(OcrError::Spawn)?;
+    }
+    Ok(rescan_engine(state))
+}
+
+fn engine_or_err(state: &State<'_, AppState>) -> Result<Arc<TesseractCli>, OcrError> {
     state
         .engine
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or_else(|| {
+            OcrError::Image(
+                "Tesseract bulunamadı. Tesseract 5 kurun ya da ayarladığınız yolu kontrol edin.".into(),
+            )
+        })
+}
+
+fn tessdata_dir(state: &State<'_, AppState>) -> Result<std::path::PathBuf, OcrError> {
+    engine_or_err(state)?
         .tessdata_dir
         .clone()
         .ok_or_else(|| OcrError::Image("tessdata dizini çözümlenemedi".into()))
@@ -113,7 +196,7 @@ pub async fn ocr_run(
 
 async fn run_ocr(state: &State<'_, AppState>, png: Vec<u8>) -> Result<OcrDocument, OcrError> {
     let opts = state.options.lock().unwrap().clone();
-    let engine = Arc::clone(&state.engine);
+    let engine = engine_or_err(state)?;
     let doc = tauri::async_runtime::spawn_blocking(move || engine.recognize(&png, &opts))
         .await
         .map_err(|e| OcrError::Image(e.to_string()))??;

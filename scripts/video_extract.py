@@ -66,6 +66,7 @@ def find_tesseract() -> str:
         return env
     root = _repo_root()
     for p in (
+        root / "tesseract-runtime" / "tesseract.exe",
         root / "tessdata",
         root / "assets" / "tesseract-runtime" / "tesseract.exe",
         Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),

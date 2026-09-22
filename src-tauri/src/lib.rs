@@ -82,9 +82,13 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     let mi_quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&mi_capture, &mi_show, &mi_quit])?;
 
+    let Some(icon) = app.default_window_icon().cloned() else {
+        eprintln!("Tepsi simgesi yok, tepsi atlanıyor.");
+        return Ok(());
+    };
     TrayIconBuilder::with_id("mimo-tray")
         .tooltip("Mimo OCR")
-        .icon(app.default_window_icon().cloned().unwrap())
+        .icon(icon)
         .menu(&menu)
         .on_menu_event(|app, ev| match ev.id().as_ref() {
             "capture" => open_overlay(app),
@@ -113,28 +117,45 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            // Motor: Tesseract 5 (CLI bağdaştırıcısı)
-            let engine = engine::TesseractCli::detect().map_err(|e| {
-                eprintln!("Motor bulunamadı: {e}");
-                e
-            })?;
-            app.manage(AppState {
-                engine: Arc::new(engine),
-                options: Mutex::new(OcrOptions::default()),
-                last_region: Mutex::new(None),
-            });
+            // Motor: Tesseract 5. Bulunamazsa uygulama yine de acilir;
+            // arayuzdeki uyari bandi kurulum/yol secimi sunar.
+            match engine::TesseractCli::detect() {
+                Ok(engine) => {
+                    app.manage(AppState {
+                        engine: Mutex::new(Some(Arc::new(engine))),
+                        options: Mutex::new(OcrOptions::default()),
+                        last_region: Mutex::new(None),
+                    });
+                }
+                Err(e) => {
+                    eprintln!("Tesseract bulunamadı, motorsuz başlanıyor: {e}");
+                    app.manage(AppState {
+                        engine: Mutex::new(None),
+                        options: Mutex::new(OcrOptions::default()),
+                        last_region: Mutex::new(None),
+                    });
+                }
+            }
 
-            build_overlay(app.handle())?;
-            build_tray(app.handle())?;
+            if let Err(e) = build_overlay(app.handle()) {
+                eprintln!("Overlay kurulamadı: {e}");
+            }
+            if let Err(e) = build_tray(app.handle()) {
+                eprintln!("Tepsi kurulamadı: {e}");
+            }
 
             // Küresel kısayol: Ctrl+Shift+X → bölge yakalama
             let handle = app.handle().clone();
-            app.global_shortcut()
-                .on_shortcut("Ctrl+Shift+X", move |_app, _sc, ev| {
+            if let Err(e) = app.global_shortcut().on_shortcut(
+                "Ctrl+Shift+X",
+                move |_app, _sc, ev| {
                     if ev.state == ShortcutState::Pressed {
                         open_overlay(&handle);
                     }
-                })?;
+                },
+            ) {
+                eprintln!("Kısayol kaydedilemedi: {e}");
+            }
 
             Ok(())
         })
@@ -152,6 +173,9 @@ pub fn run() {
             commands::install_model,
             commands::remove_model,
             commands::available_languages,
+            commands::engine_status,
+            commands::rescan_engine,
+            commands::set_engine_path,
             video::video_support_info,
             video::video_extract_batch,
         ])

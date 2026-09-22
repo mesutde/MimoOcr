@@ -10,6 +10,14 @@
   <div id="app">
     <aside id="side">
       <div class="brand">Mimo<span>OCR</span></div>
+      <div id="engine-warn" hidden>
+        <span id="engine-warn-text">Tesseract bulunamadı.</span>
+        <div class="row">
+          <button id="btn-engine-path">Yolu Seç…</button>
+          <button id="btn-engine-rescan">Tekrar Tara</button>
+        </div>
+        <a id="engine-dl" href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">Tesseract 5 indir ↗</a>
+      </div>
       <button id="btn-capture" class="primary">Bölge Yakala <kbd>Ctrl+Shift+X</kbd></button>
       <div class="row">
         <button id="btn-open">Görsel Aç…</button>

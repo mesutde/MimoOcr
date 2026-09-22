@@ -136,8 +136,14 @@ pub fn video_support_info() -> VideoSupportInfo {
     hide_console(&mut ff);
     let ffmpeg_ok = ff.output().map(|o| o.status.success()).unwrap_or(false);
 
-    // Tesseract: env → bilinen kurulum yollari → PATH
-    let tess_ok = std::env::var("MIMO_TESSERACT")
+    // Tesseract: env → kurulumla gomulu runtime → bilinen kurulum yollari → PATH
+    let bundled_ok = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(|p| p.to_path_buf()))
+        .map(|d| d.join("tesseract-runtime/tesseract.exe").is_file())
+        .unwrap_or(false);
+    let tess_ok = bundled_ok
+        || std::env::var("MIMO_TESSERACT")
         .map(|p| PathBuf::from(&p).is_file())
         .unwrap_or(false)
         || PathBuf::from(r"C:\Program Files\Tesseract-OCR\tesseract.exe").is_file()

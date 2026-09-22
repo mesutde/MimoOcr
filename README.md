@@ -5,15 +5,31 @@ Tauri 2 (TypeScript ön yüz) + Rust çekirdeği. Varsayılan motor: Tesseract 5
 
 *Open-source, offline, Turkish + English first desktop OCR tool. Tauri 2 (TypeScript frontend) + Rust core. Default engine: Tesseract 5 (CLI adapter).*
 
-## İndir / Download (v0.4.0)
+## İndir / Download (v0.4.1)
 
 | Paket | Dosya |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.4.0_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.4.0_x64_en-US.msi` |
-| Taşınabilir | `MimoOCR-portable-windows-x64-v0.4.0.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.4.1_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.4.1_x64_en-US.msi` |
+| Taşınabilir | `MimoOCR-portable-windows-x64-v0.4.1.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında.
+
+## Sürüm 0.4.1 — Yenilikler / What's New
+
+- **Tesseract artık kurulumla gömülü geliyor:** `tesseract-runtime/` (Tesseract 5.4.0 + tüm DLL'ler)
+  MSI/NSIS/portable içinde. Başka bir PC'ye kurup açtığınızda ayrıca Tesseract kurmanıza
+  **gerek yok** — uygulama kutudan çıktığı gibi OCR yapar. Öncelik sırası: `MIMO_TESSERACT` →
+  kullanıcı yolu → gömülü runtime → sistem kurulumu → PATH.
+- **Sessiz-ölüm düzeltmesi:** Tesseract bulunamasa bile uygulama artık **her zaman açılır**;
+  eksikse uyarı bandı çıkar (indir bağlantısı + "Yolu Seç…" + "Tekrar Tara"). Eskiden motor
+  yoksa pencere hiç oluşmuyordu.
+- **Özel Tesseract yolu:** Dosya seçiciyle gösterilen `tesseract.exe` doğrulanıp
+  `%APPDATA%/mimo-ocr/tesseract-path.txt` içinde kalıcı saklanır.
+- Video betiği ve gereksinim denetimi de gömülü runtime'ı tanır.
+
+*New in 0.4.1: embedded Tesseract 5.4.0 runtime in all packages (no separate install needed),
+graceful startup with engine warning banner + rescan + custom path picker.*
 
 ## Sürüm 0.4.0 — Yenilikler / What's New
 
@@ -76,10 +92,9 @@ last region, word-level confidence scores (TSV).*
 
 Ortam değişkenleri: `MIMO_TESSERACT` (tesseract.exe yolu), `MIMO_TESSDATA` (tessdata dizini).
 
-**Taşınabilir sürüm:** ZIP'i açın; `mimo-ocr.exe` yanında `tessdata/`, `models.json`
-ve `scripts/video_extract.py` hazır gelir.
-OCR için sistemde Tesseract 5 kurulu olmalı veya `MIMO_TESSERACT` ile yol gösterilmelidir.
-Video sekmesi için ayrıca `ffmpeg`/`ffprobe` ve Python 3 gerekir
+**Taşınabilir sürüm:** ZIP'i açın; `mimo-ocr.exe` yanında `tessdata/`, `tesseract-runtime/`,
+`models.json` ve `scripts/video_extract.py` hazır gelir — ayrıca kurulum gerekmez.
+Video sekmesi için `ffmpeg`/`ffprobe` ve Python 3 gerekir
 (`MIMO_PYTHON` ile yorumlayıcı yolu verilebilir).
 
 ## Geliştirme
