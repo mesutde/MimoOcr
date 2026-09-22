@@ -6,6 +6,7 @@ mod capture;
 mod commands;
 mod engine;
 mod models;
+mod video;
 
 use std::sync::{Arc, Mutex};
 
@@ -151,6 +152,8 @@ pub fn run() {
             commands::install_model,
             commands::remove_model,
             commands::available_languages,
+            video::video_support_info,
+            video::video_extract_batch,
         ])
         .run(tauri::generate_context!())
         .expect("Mimo OCR çalıştırılamadı");

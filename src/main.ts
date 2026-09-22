@@ -109,6 +109,193 @@ btnSave.addEventListener("click", async () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Video → CSV/TXT sekmesi
+// ---------------------------------------------------------------------------
+
+interface VideoItemResult {
+  path: string;
+  name: string;
+  ok: boolean;
+  error?: string | null;
+  outputFiles: string[];
+  message: string;
+}
+
+interface VideoBatchDto {
+  items: VideoItemResult[];
+  outDir: string;
+  okCount: number;
+  failCount: number;
+}
+
+interface VideoSupportInfo {
+  python: string;
+  pythonOk: boolean;
+  script?: string | null;
+  scriptOk: boolean;
+  ffmpegOk: boolean;
+  tesseractOk: boolean;
+}
+
+const tabOcr = $<HTMLButtonElement>("tab-ocr");
+const tabVideo = $<HTMLButtonElement>("tab-video");
+const viewOcr = $("view-ocr");
+const viewVideo = $("view-video");
+const btnVideoAdd = $<HTMLButtonElement>("btn-video-add");
+const btnVideoOut = $<HTMLButtonElement>("btn-video-out");
+const btnVideoRun = $<HTMLButtonElement>("btn-video-run");
+const btnVideoClear = $<HTMLButtonElement>("btn-video-clear");
+const selVmode = $<HTMLSelectElement>("sel-vmode");
+const selVquality = $<HTMLSelectElement>("sel-vquality");
+const selVformat = $<HTMLSelectElement>("sel-vformat");
+const videoFiles = $("video-files");
+const videoReq = $("video-req");
+const videoStatus = $("video-status");
+const videoLog = $("video-log") as unknown as HTMLPreElement;
+const videoBar = $("video-progress-bar");
+const videoOutputs = $("video-outputs");
+
+let videoPaths: string[] = [];
+let videoOutDir = "";
+let videoBusy = false;
+
+function switchTab(video: boolean) {
+  tabOcr.classList.toggle("active", !video);
+  tabVideo.classList.toggle("active", video);
+  viewOcr.style.display = video ? "none" : "";
+  (viewVideo as HTMLElement).hidden = !video;
+}
+
+tabOcr.addEventListener("click", () => switchTab(false));
+tabVideo.addEventListener("click", () => switchTab(true));
+
+function renderVideoFiles() {
+  videoFiles.innerHTML = videoPaths.length
+    ? ""
+    : '<span class="muted">Henüz video seçilmedi.</span>';
+  for (const p of videoPaths) {
+    const div = document.createElement("div");
+    div.textContent = "🎬 " + p;
+    videoFiles.appendChild(div);
+  }
+  const out = document.createElement("div");
+  out.textContent = "📁 Çıktı: " + (videoOutDir || "(seçilmedi — çalıştırırken sorulur)");
+  videoFiles.appendChild(out);
+}
+
+function vlog(msg: string) {
+  videoLog.textContent += msg + "\n";
+  videoLog.scrollTop = videoLog.scrollHeight;
+}
+
+async function refreshVideoReq() {
+  try {
+    const info = await invoke<VideoSupportInfo>("video_support_info");
+    const missing: string[] = [];
+    if (!info.pythonOk) missing.push("Python yok");
+    if (!info.scriptOk) missing.push("betik yok");
+    if (!info.ffmpegOk) missing.push("ffmpeg yok");
+    if (!info.tesseractOk) missing.push("Tesseract yok");
+    videoReq.textContent = missing.length
+      ? "⚠ " + missing.join(" · ")
+      : "✓ python · ffmpeg · tesseract hazır";
+    videoReq.className = "status " + (missing.length ? "err" : "ok");
+  } catch (e) {
+    videoReq.textContent = String(e);
+    videoReq.className = "status err";
+  }
+}
+
+btnVideoAdd.addEventListener("click", async () => {
+  const sel = await open({
+    multiple: true,
+    filters: [{
+      name: "Video",
+      extensions: ["mp4", "mov", "avi", "mkv", "webm", "m4v", "wmv", "flv"],
+    }],
+  });
+  if (Array.isArray(sel)) videoPaths.push(...sel.filter((s) => !videoPaths.includes(s)));
+  else if (typeof sel === "string" && !videoPaths.includes(sel)) videoPaths.push(sel);
+  renderVideoFiles();
+});
+
+btnVideoOut.addEventListener("click", async () => {
+  const sel = await open({ directory: true, multiple: false });
+  if (typeof sel === "string") {
+    videoOutDir = sel;
+    renderVideoFiles();
+  }
+});
+
+btnVideoClear.addEventListener("click", () => {
+  videoPaths = [];
+  videoOutputs.innerHTML = "";
+  videoLog.textContent = "";
+  videoBar.style.width = "0%";
+  videoStatus.textContent = "";
+  renderVideoFiles();
+});
+
+btnVideoRun.addEventListener("click", async () => {
+  if (videoBusy || videoPaths.length === 0) return;
+  if (!videoOutDir) {
+    const sel = await open({ directory: true, multiple: false });
+    if (typeof sel !== "string") return;
+    videoOutDir = sel;
+    renderVideoFiles();
+  }
+  videoBusy = true;
+  btnVideoRun.disabled = true;
+  videoOutputs.innerHTML = "";
+  videoLog.textContent = "";
+  videoBar.style.width = "0%";
+  videoStatus.textContent = "Video işleniyor…";
+  videoStatus.className = "status";
+  try {
+    const dto = await invoke<VideoBatchDto>("video_extract_batch", {
+      files: videoPaths,
+      outDir: videoOutDir,
+      mode: selVmode.value,
+      langs: selLang.value,
+      maxFrames: Number(selVquality.value),
+      formats: selVformat.value,
+    });
+    videoBar.style.width = "100%";
+    videoStatus.textContent =
+      `${dto.okCount}/${dto.items.length} başarılı → ${dto.outDir}`;
+    videoStatus.className = "status " + (dto.failCount ? "err" : "ok");
+    for (const it of dto.items) {
+      const div = document.createElement("div");
+      if (it.ok) {
+        div.className = "fout";
+        div.textContent = "✓ " + it.name + " → " + it.outputFiles.join(" · ");
+      } else {
+        div.textContent = "✗ " + it.name + ": " + (it.error ?? "hata");
+      }
+      videoOutputs.appendChild(div);
+    }
+  } catch (e) {
+    videoStatus.textContent = String(e);
+    videoStatus.className = "status err";
+  } finally {
+    videoBusy = false;
+    btnVideoRun.disabled = false;
+  }
+});
+
+listen<string>("video-log", (ev) => vlog(ev.payload));
+listen<Record<string, unknown>>("video-progress", (ev) => {
+  const p = Number(ev.payload["percent"] ?? 0);
+  videoBar.style.width = `${Math.max(0, Math.min(100, p))}%`;
+});
+listen<Record<string, unknown>>("batch-progress", (ev) =>
+  vlog(`--- ${ev.payload["index"]}/${ev.payload["total"]} ${ev.payload["name"]} ---`),
+);
+
+renderVideoFiles();
+refreshVideoReq();
+
 // Bölge yakalama tamamlandığında overlay penceresinden gelen sonuç
 listen<OcrDocument>("ocr-result", (ev) => showResult(ev.payload));
 listen<string>("ocr-error", (ev) => setStatus(ev.payload, "err"));

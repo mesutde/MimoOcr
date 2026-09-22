@@ -43,6 +43,11 @@
       <div id="privacy">Tamamen cihazınızda işlendi · Ağ kullanılmadı</div>
     </aside>
     <main id="workspace">
+      <nav id="tabs">
+        <button id="tab-ocr" class="active">Görsel OCR</button>
+        <button id="tab-video">Video → CSV/TXT</button>
+      </nav>
+      <div id="view-ocr">
       <section id="preview-pane">
         <div class="pane-title">Kaynak</div>
         <div id="img-wrap"><span id="img-empty">Henüz görsel yok.<br/>Kısayol ile bölge yakalayın veya görsel açın.</span></div>
@@ -58,6 +63,55 @@
           <button id="btn-save">Farklı Kaydet…</button>
         </div>
       </section>
+      </div>
+      <div id="view-video" hidden>
+        <section id="video-pane">
+          <div class="pane-title">Video → CSV/TXT <span id="video-req" class="status"></span></div>
+          <p id="video-desc">Kaydırılan ekran kayıtlarından (Excel/CSV yerine video atanlar için) metin çıkarır:
+            ffmpeg ile adaptif kare örnekleme → Tesseract kare OCR → scroll tekrarı eleme →
+            tabloysa CSV, her koşulda TXT.</p>
+          <div class="row">
+            <button id="btn-video-add">Video Ekle…</button>
+            <button id="btn-video-out">Çıktı Klasörü…</button>
+          </div>
+          <div id="video-files" class="filelist"><span class="muted">Henüz video seçilmedi.</span></div>
+          <div class="vgrid">
+            <div class="field">
+              <label for="sel-vmode">Scroll hızı</label>
+              <select id="sel-vmode">
+                <option value="auto" selected>Otomatik</option>
+                <option value="fast">Hızlı scroll</option>
+                <option value="slow">Yavaş scroll</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sel-vquality">Kalite / Hız</label>
+              <select id="sel-vquality">
+                <option value="120">Hızlı (~120 kare)</option>
+                <option value="180" selected>Dengeli (~180 kare)</option>
+                <option value="280">Yüksek (~280 kare)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sel-vformat">Format</label>
+              <select id="sel-vformat">
+                <option value="csv,txt" selected>CSV + TXT (önerilen)</option>
+                <option value="csv,txt,md">CSV + TXT + MD</option>
+                <option value="txt">Yalnız TXT</option>
+                <option value="csv">Yalnız CSV</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btn-video-run" class="primary">Videodan Çıkar</button>
+            <button id="btn-video-clear">Listeyi Temizle</button>
+          </div>
+          <div id="video-progress-wrap"><div id="video-progress-bar"></div></div>
+          <div id="video-status" class="status"></div>
+          <pre id="video-log" spellcheck="false"></pre>
+          <div id="video-outputs" class="filelist"></div>
+        </section>
+      </div>
     </main>
   </div>
   <script type="module" src="/src/main.ts"></script>
