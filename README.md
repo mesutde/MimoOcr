@@ -5,15 +5,32 @@ Tauri 2 (TypeScript ön yüz) + Rust çekirdeği. Varsayılan motor: Tesseract 5
 
 *Open-source, offline, Turkish + English first desktop OCR tool. Tauri 2 (TypeScript frontend) + Rust core. Default engine: Tesseract 5 (CLI adapter).*
 
-## İndir / Download (v0.4.1)
+## İndir / Download (v0.4.2)
 
 | Paket | Dosya |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.4.1_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.4.1_x64_en-US.msi` |
-| Taşınabilir | `MimoOCR-portable-windows-x64-v0.4.1.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.4.2_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.4.2_x64_en-US.msi` |
+| Taşınabilir | `MimoOCR-portable-windows-x64-v0.4.2.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında.
+
+## Sürüm 0.4.2 — Yenilikler / What's New
+
+- **"Açılmıyor" hatası düzeltildi (kritik):** Yapılandırılmamış güncelleyici eklentisi
+  (`tauri-plugin-updater`, `tauri.conf.json`'da karşılığı yoktu) `run()`'ı her açılışta
+  patlatıyor, penceresiz modda sessizce öldürüyordu — **uygulama v0.3.0'dan beri hiçbir
+  PC'de açılmıyordu.** Eklenti kaldırıldı.
+- **Teşhis altyapısı:** Açılış adımları `%APPDATA%/mimo-ocr/startup.log` dosyasına yazılıyor
+  (WebView2 sürümü dahil); ölümcül hata artık sessiz çıkış yerine mesaj kutusuyla gösteriliyor.
+- **ffmpeg gömülü:** `ffmpeg 9.0.2` + `ffprobe` kurulumda (`ffmpeg/`); Video sekmesi kutudan
+  çıkar çalışıyor. Sıra: gömülü → PATH. Lisans notu: `THIRD_PARTY_NOTICES.md` (GPLv3).
+  İlk derlemede `src-tauri/build.rs` dosyaları SHA-256 doğrulamasıyla indirir
+  (repoda tutulmaz — GitHub dosya limiti).
+- v0.4.1'deki gömülü Tesseract + dayanıklı başlatma + motor uyarı bandı aynen duruyor.
+
+*New in 0.4.2: fixed fatal startup crash (unconfigured updater plugin killed the app on every
+PC since v0.3.0), startup logging + fatal message box, embedded ffmpeg/ffprobe.*
 
 ## Sürüm 0.4.1 — Yenilikler / What's New
 

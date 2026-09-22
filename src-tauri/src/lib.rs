@@ -6,6 +6,7 @@ mod capture;
 mod commands;
 mod engine;
 mod models;
+mod startup_log;
 mod video;
 
 use std::sync::{Arc, Mutex};
@@ -115,12 +116,20 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            startup_log::mark("setup başladı (v0.4.2)");
+            startup_log::mark(&format!(
+                "webview2: {}",
+                startup_log::webview2_version()
+            ));
             // Motor: Tesseract 5. Bulunamazsa uygulama yine de acilir;
             // arayuzdeki uyari bandi kurulum/yol secimi sunar.
             match engine::TesseractCli::detect() {
                 Ok(engine) => {
+                    startup_log::mark(&format!(
+                        "motor bulundu: {}",
+                        engine.exe_path().display()
+                    ));
                     app.manage(AppState {
                         engine: Mutex::new(Some(Arc::new(engine))),
                         options: Mutex::new(OcrOptions::default()),
@@ -128,6 +137,7 @@ pub fn run() {
                     });
                 }
                 Err(e) => {
+                    startup_log::mark(&format!("motor yok (devam): {e}"));
                     eprintln!("Tesseract bulunamadı, motorsuz başlanıyor: {e}");
                     app.manage(AppState {
                         engine: Mutex::new(None),
@@ -138,10 +148,16 @@ pub fn run() {
             }
 
             if let Err(e) = build_overlay(app.handle()) {
+                startup_log::mark(&format!("overlay hatası (devam): {e}"));
                 eprintln!("Overlay kurulamadı: {e}");
+            } else {
+                startup_log::mark("overlay hazır");
             }
             if let Err(e) = build_tray(app.handle()) {
+                startup_log::mark(&format!("tepsi hatası (devam): {e}"));
                 eprintln!("Tepsi kurulamadı: {e}");
+            } else {
+                startup_log::mark("tepsi hazır");
             }
 
             // Küresel kısayol: Ctrl+Shift+X → bölge yakalama
@@ -154,9 +170,13 @@ pub fn run() {
                     }
                 },
             ) {
+                startup_log::mark(&format!("kısayol hatası (devam): {e}"));
                 eprintln!("Kısayol kaydedilemedi: {e}");
+            } else {
+                startup_log::mark("kısayol hazır");
             }
 
+            startup_log::mark("setup tamam, pencere açılıyor");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -180,5 +200,10 @@ pub fn run() {
             video::video_extract_batch,
         ])
         .run(tauri::generate_context!())
-        .expect("Mimo OCR çalıştırılamadı");
+        .unwrap_or_else(|e| {
+            startup_log::fatal(
+                "Mimo OCR başlatılamadı",
+                &format!("Açılış başarısız: {e}"),
+            )
+        });
 }

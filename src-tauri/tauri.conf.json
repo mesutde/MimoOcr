@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Mimo OCR",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "identifier": "com.mimo.ocr",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -39,7 +39,8 @@
       "../tessdata": "tessdata",
       "../models.json": "models.json",
       "../scripts/video_extract.py": "scripts/video_extract.py",
-      "../assets/tesseract-runtime": "tesseract-runtime"
+      "../assets/tesseract-runtime": "tesseract-runtime",
+      "../assets/ffmpeg": "ffmpeg"
     }
   }
 }

@@ -313,7 +313,7 @@ fn bundled_runtime_exe() -> Option<PathBuf> {
 }
 
 /// Kullanicibasina config dizininde bir dosya yolu (yoksa olusturmaya calisir).
-fn dirs_config_file(name: &str) -> Option<PathBuf> {
+pub(crate) fn dirs_config_file(name: &str) -> Option<PathBuf> {
     #[cfg(windows)]
     let base = std::env::var("APPDATA").ok().map(PathBuf::from)?;
     #[cfg(not(windows))]

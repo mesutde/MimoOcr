@@ -36,17 +36,6 @@ except Exception:
     pass
 
 
-def _p(msg: str) -> None:
-    """Safe print for Windows consoles."""
-    try:
-        print(msg, flush=True)
-    except UnicodeEncodeError:
-        try:
-            print(msg.encode("ascii", "replace").decode("ascii"), flush=True)
-        except Exception:
-            print(repr(msg), flush=True)
-
-
 def _repo_root() -> Path:
     """Depo/kurulum kökünü bul: script konumu → exe konumu → cwd."""
     here = Path(__file__).resolve()
@@ -58,6 +47,26 @@ def _repo_root() -> Path:
         if (parent / "tessdata").is_dir():
             return parent
     return Path.cwd()
+
+
+# Kurulumla gomulu ffmpeg/ffprobe varsa PATH'e al (yoksa sistem PATH'i kullanilir).
+try:
+    _bundled_ff = _repo_root() / "ffmpeg"
+    if (_bundled_ff / "ffmpeg.exe").is_file():
+        os.environ["PATH"] = str(_bundled_ff) + os.pathsep + os.environ.get("PATH", "")
+except Exception:
+    pass
+
+
+def _p(msg: str) -> None:
+    """Safe print for Windows consoles."""
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        try:
+            print(msg.encode("ascii", "replace").decode("ascii"), flush=True)
+        except Exception:
+            print(repr(msg), flush=True)
 
 
 def find_tesseract() -> str:

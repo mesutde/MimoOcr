@@ -131,10 +131,16 @@ pub fn video_support_info() -> VideoSupportInfo {
     let python_ok = probe.output().map(|o| o.status.success()).unwrap_or(false);
 
     let script = video_script_path().map(|p| p.display().to_string());
+    // ffmpeg: kurulumla gomulu ffmpeg/ dizini → PATH
+    let bundled_ff = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(|p| p.to_path_buf()))
+        .map(|d| d.join("ffmpeg/ffmpeg.exe").is_file())
+        .unwrap_or(false);
     let mut ff = std::process::Command::new("ffmpeg");
     ff.arg("-version");
     hide_console(&mut ff);
-    let ffmpeg_ok = ff.output().map(|o| o.status.success()).unwrap_or(false);
+    let ffmpeg_ok = bundled_ff || ff.output().map(|o| o.status.success()).unwrap_or(false);
 
     // Tesseract: env → kurulumla gomulu runtime → bilinen kurulum yollari → PATH
     let bundled_ok = std::env::current_exe()

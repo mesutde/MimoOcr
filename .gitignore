@@ -6,3 +6,6 @@ src-tauri/gen/
 out.txt
 out.tsv
 ocr-ours.txt
+# ffmpeg exe'leri GitHub dosya limitini asiyor; build.rs ilk derlemede indirir
+assets/ffmpeg/*.exe
+assets/ffmpeg/*.zip
