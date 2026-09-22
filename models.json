@@ -1,0 +1,24 @@
+{
+  "models": [
+    { "code": "tur", "name": "Türkçe", "tier": 1, "sha256": null },
+    { "code": "eng", "name": "İngilizce", "tier": 1, "sha256": null },
+    { "code": "deu", "name": "Almanca", "tier": 2, "sha256": null },
+    { "code": "fra", "name": "Fransızca", "tier": 2, "sha256": null },
+    { "code": "spa", "name": "İspanyolca", "tier": 2, "sha256": null },
+    { "code": "ita", "name": "İtalyanca", "tier": 2, "sha256": null },
+    { "code": "por", "name": "Portekizce", "tier": 2, "sha256": null },
+    { "code": "aze", "name": "Azerbaycanca", "tier": 2, "sha256": null },
+    { "code": "nld", "name": "Hollandaca", "tier": 2, "sha256": null },
+    { "code": "pol", "name": "Lehçe", "tier": 2, "sha256": null },
+    { "code": "rus", "name": "Rusça", "tier": 3, "sha256": null },
+    { "code": "ukr", "name": "Ukraynaca", "tier": 3, "sha256": null },
+    { "code": "ara", "name": "Arapça", "tier": 3, "sha256": null },
+    { "code": "fas", "name": "Farsça", "tier": 3, "sha256": null },
+    { "code": "ell", "name": "Yunanca", "tier": 3, "sha256": null },
+    { "code": "jpn", "name": "Japonca", "tier": 3, "sha256": null },
+    { "code": "kor", "name": "Korece", "tier": 3, "sha256": null },
+    { "code": "chi_sim", "name": "Çince (Basit)", "tier": 3, "sha256": null },
+    { "code": "chi_tra", "name": "Çince (Geleneksel)", "tier": 3, "sha256": null }
+  ],
+  "base_url": "https://github.com/tesseract-ocr/tessdata_fast/raw/main/{code}.traineddata"
+}

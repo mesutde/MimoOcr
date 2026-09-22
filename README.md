@@ -1,346 +1,86 @@
-<img width="925" height="709" alt="1" src="https://github.com/user-attachments/assets/20b19cde-b12d-4311-a51e-263b5f052cd8" />
-<img width="924" height="711" alt="2" src="https://github.com/user-attachments/assets/81c3e70f-ad19-4e6a-9edd-867ecd69b642" />
-<img width="913" height="707" alt="3" src="https://github.com/user-attachments/assets/5b816af0-c3ce-4cc0-be28-6d1c98cf1218" />
-<img width="922" height="709" alt="4" src="https://github.com/user-attachments/assets/2af98744-c6b2-4cf9-928c-c8b3d1ffb8c7" />
-
-
 # Mimo OCR
 
-**Açık kaynak · Yerel (cihaz üzerinde) · Çok motorlu masaüstü OCR**
+Açık kaynak, çevrimdışı, Türkçe + İngilizce öncelikli masaüstü OCR aracı.
+Tauri 2 (TypeScript ön yüz) + Rust çekirdeği. Varsayılan motor: Tesseract 5 (CLI bağdaştırıcısı).
 
-Ekrandaki, görsellerdeki ve belgelerdeki metni yakalayıp **TXT / Markdown** olarak dışa aktarır.  
-Çıktı özellikle **LLM / yapay zekâ** modellerine analiz girdisi olarak hazırlanmıştır.
+*Open-source, offline, Turkish + English first desktop OCR tool. Tauri 2 (TypeScript frontend) + Rust core. Default engine: Tesseract 5 (CLI adapter).*
 
-> **Geliştirme notu:** Bu proje **Xiaomi MiMo Developers — MiMo-X Pro** yapay zekâ modeli ile geliştirilmiştir.  
-> Geliştirici: **[Mesut Demirci](https://www.linkedin.com/in/mesutdemirci/)**
+## İndir / Download (v0.3.0)
 
----
+| Paket | Dosya |
+|---|---|
+| Kurulum (NSIS) | `Mimo.OCR_0.3.0_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.3.0_x64_en-US.msi` |
+| Taşınabilir | `MimoOCR-portable-windows-x64-v0.3.0.zip` |
 
-## English
+Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında.
 
-**Open-source · On-device · Multi-engine desktop OCR**
+## Sürüm 0.3.0 — Yenilikler / What's New
 
-Capture text from the screen, images, and documents. Export as **TXT / Markdown**, ready for **LLM / AI** analysis.
+- **Dil modeli yöneticisi:** 19 dil (Türkçe, İngilizce, Almanca, Fransızca, İspanyolca, İtalyanca,
+  Portekizce, Azerbaycanca, Hollandaca, Lehçe, Rusça, Ukraynaca, Arapça, Farsça, Yunanca,
+  Japonca, Korece, Basit/Geleneksel Çince) uygulama içinden indirilebilir.
+  İndirmeler SHA-256 doğrulamalıdır, yarım dosyalar `.part` olarak yazılıp doğrulama sonrası
+  atomik şekilde yerine taşınır. Temel modeller (`tur`/`eng`/`osd`) silmeye karşı korunur.
+- **Çoklu monitör + DPI desteği:** Bölge seçim katmanı (overlay) artık tüm monitörlerin
+  birleşimini (sanal masaüstü) kaplar; monitör başına DPI ölçeği hesaba katılır ve farklı
+  ölçekli monitörler arasında kalan seçimler Lanczos3 yeniden örneklemeyle doğru birleştirilir.
+- **Otomatik pano kopyalama:** OCR tamamlanınca sonuç otomatik olarak panoya yazılır (ayardan kapatılabilir).
+- **Son bölgeyi yeniden OCR:** Son yakalanan bölge tek komutla tekrar işlenebilir.
+- **Kelime düzeyi güven skoru:** Tesseract TSV çıktısından kelime bazlı güven ve koordinatlar;
+  sonuç panelinde ortalama güven yüzdesi, kelime sayısı ve süre (ms) gösterilir.
 
-> Built with **Xiaomi MiMo Developers — MiMo-X Pro**.  
-> Developer: **[Mesut Demirci](https://www.linkedin.com/in/mesutdemirci/)**
+*New in 0.3.0: in-app language model manager (19 languages, SHA-256 verified atomic downloads),
+multi-monitor overlay with per-monitor DPI handling, auto-copy to clipboard, re-capture of the
+last region, word-level confidence scores (TSV).*
 
----
+## Özellikler
 
-## Özellikler / Features
+- Küresel kısayol: **Ctrl+Shift+X** → bölge seçim katmanı → OCR → sonuç otomatik panoda
+- Sistem tepsisi: Bölge Yakala / Aç / Çıkış
+- Bölge seçimi: sürükle-bırak, canlı boyut göstergesi, Esc ile iptal
+- Görsel dosyası açma (PNG/JPG/BMP/WebP/GIF) ve panodaki görseli OCR'leme
+- Dil: `tur`, `eng`, `tur+eng` ve model yöneticisiyle indirilen diller · PSM: 3/6/7/11 · Ön işleme: 1×/2×/3× büyütme
+- Sonuç düzenleme, TXT/MD/JSON olarak kaydetme, kelime düzeyi güven skoru (TSV)
+- Tamamen çevrimdışı; telemetri yok (yalnızca model indirme ağ kullanır)
 
-| Özellik / Feature | Açıklama / Description |
-|-------------------|------------------------|
-| **Bölge seç** | Masaüstünde sürükle-bırak ile alan OCR |
-| **Ekran OCR** | Tam ekran tek tuş |
-| **Önizleme seç** | Uygulama içi kopya; **Ctrl** ile çoklu alan |
-| **Belge OCR** | PNG/JPG/BMP/TIFF dosya yolu |
-| **Belge metin** | PDF, DOCX, XLSX, **UDF (UYAP 0.2.0)** |
-| **Toplu** | Çoklu görsel + PDF/DOCX/XLSX/PPTX/**UDF (UYAP)** metni |
-| **Çıktı** | TXT / Markdown · ayrı ayrı veya birleşik |
-| **Motorlar** | Tesseract · Windows OCR · Mock (genişletilebilir) |
-| **Sağ tık** | Kaynak görsele sağ tık → farklı motorla yeniden OCR |
-| **Gizlilik** | Tamamen cihazda; telemetri yok |
-| **UI dilleri** | EN, TR, ES, FR, DE, PT, ZH, JA, AR, RU, HI (bayraklı) |
-| **Tema** | Koyu / açık |
-| **Kısayol** | Ctrl+Shift+O (tam ekran OCR) |
-| **Tepsi** | Sistem tepsisi menüsü |
+## Gereksinimler
 
----
+- [Tesseract 5](https://github.com/UB-Mannheim/tesseract/wiki) (Windows yükleyicisi)
+- Rust (stable), Node.js 20+ (yalnızca geliştirme için)
+- Dil verileri: depo kökündeki `tessdata/` klasörü (`tur`, `eng`, `osd` + `configs/`).
+  Uygulama tessdata'yı şu sırayla çözer: `MIMO_TESSDATA` → uygulama dizini ve üst dizinlerde `tessdata/` → Tesseract kurulum dizini.
 
-## Rakip karşılaştırması / Comparison
+Ortam değişkenleri: `MIMO_TESSERACT` (tesseract.exe yolu), `MIMO_TESSDATA` (tessdata dizini).
 
-| | **Mimo OCR** | **Text Grab** | **NormCap** | **MiniSnip** |
-|--|--------------|---------------|-------------|--------------|
-| **Lisans / License** | Apache-2.0 | MIT | GPLv3 | GPLv3 |
-| **Platform** | Windows (macOS/Linux build notu ↓) | Windows | Win / macOS / Linux | Windows |
-| **Motorlar / Engines** | Tesseract, Windows OCR, (Paddle/ort yol haritası) | Tesseract, Windows OCR/AI | Tesseract ağırlıklı | Dahili / sınırlı |
-| **TR+EN varsayılan paket** | Evet (tessdata gömülü hazır) | Kısmi | Genelde EN | Dil paketine bağlı |
-| **Çoklu alan (Ctrl)** | Evet | Sınırlı | Temel | Hayır |
-| **Sağ tık motor değiştirme** | Evet | Hayır | Hayır | Hayır |
-| **Toplu + TXT/MD (LLM)** | Evet | Zayıf | Hayır | Hayır |
-| **PDF/Office/UDF metin** | Evet (toplu + belge; UYAP `.udf` = ZIP + content.xml) | Hayır | Hayır | Hayır |
-| **Yerel / offline** | Evet | Evet | Evet | Evet |
-| **UI sadeliği** | Sekmeli, motor seçimi header’da | Özellik yoğun | Sade | Çok sade |
-| **Hedef kullanıcı** | LLM girdisi + günlük OCR | Windows iş akışı | Hızlı panoya kopyala | Hızlı snip |
+**Taşınabilir sürüm:** ZIP'i açın; `mimo-ocr.exe` yanında `tessdata/` ve `models.json` hazır gelir.
+OCR için sistemde Tesseract 5 kurulu olmalı veya `MIMO_TESSERACT` ile yol gösterilmelidir.
 
-**Mimo OCR farkı:** Text Grab kadar motor çeşitliliği + NormCap kadar yerel çalışma + MiniSnip kadar düşük sürtünme; üzerine **toplu LLM çıktısı** ve **çok motorlu sağ tık yeniden işleme**.
-
----
-
-## Kurulum / Install
-
-### Windows — Setup (MSI / NSIS)
-
-Releases sayfasından indirin (en güncel):
-
-- `Mimo OCR_0.2.0_x64_en-US.msi`
-- `Mimo OCR_0.2.0_x64-setup.exe` (NSIS)
-
-Kurulumdan sonra masaüstü kısayolu / Başlat menüsü.
-
-**Not:** OCR için sistemde Tesseract 5 kurulu olmalıdır (varsayılan `C:\Program Files\Tesseract-OCR`) **veya** app-local `tesseract` + `tessdata` paketini uygulamanın yanına koyun.  
-Proje `assets/tesseract-runtime` ve `assets/models/tessdata` (tur+eng) ile gelir; geliştirme kopyasında çalıştırırken yeterlidir.
-
-### Windows — Portable (ZIP)
-
-`MimoOCR-portable-windows-x64.zip` içeriğini çıkarın:
-
-```
-mimo-ocr-app.exe
-tesseract-runtime\   (opsiyonel — yoksa sistem Tesseract kullanılır)
-tessdata\            (tur.traineddata, eng.traineddata)
-ui\ (gerekirse)
-```
-
-`mimo-ocr-app.exe` çalıştırın. `TESSDATA_PREFIX` gerekirse `tessdata` klasörünü gösterin veya yanına koyun.
-
-```powershell
-# Portable örnek
-$env:TESSDATA_PREFIX = "C:\MimoOCR\tessdata"
-$env:MIMO_TESSERACT   = "C:\MimoOCR\tesseract-runtime\tesseract.exe"
-.\mimo-ocr-app.exe
-```
-
----
-
-## Geliştirme / Development
-
-### Ön koşullar
-
-- Rust (stable)
-- Node.js 18+ (Tauri CLI için)
-- Windows: WebView2 (sistemde genelde vardır)
-- Tesseract 5 (önerilen): [UB Mannheim](https://github.com/UB-Mannheim/tesseract/wiki)
-- Python 3 + Pillow (test verisi) · pypdf/python-docx (toplu belge)
-
-```powershell
-cd MimoOcr
-npm install
-cargo test --workspace
-cargo run -p mimo-ocr-app
-```
-
-CLI:
-
-```powershell
-cargo run -p mimo-ocr-cli -- doctor
-cargo run -p mimo-ocr-cli -- engines
-cargo run -p mimo-ocr-cli -- ocr .\datasets\tr-en\synthetic\tr_invoice.png --langs tur,eng
-cargo run -p mimo-ocr-cli -- batch .\datasets\tr-en\synthetic
-```
-
----
-
-## Release build (Windows)
+## Geliştirme
 
 ```powershell
 npm install
-# Release binary
-cargo build -p mimo-ocr-app --release
-# MSI + NSIS (tauri CLI)
-npm run build:app
-# veya
-node_modules\.bin\tauri.cmd build
+npm run tauri dev
 ```
 
-Çıktılar:
-
-```
-target\release\mimo-ocr-app.exe
-target\release\bundle\msi\Mimo OCR_0.2.0_x64_en-US.msi
-target\release\bundle\nsis\Mimo OCR_0.2.0_x64-setup.exe
-```
-
-**Portable ZIP** hazırlamak için:
+## Test
 
 ```powershell
-$staging = "$env:TEMP\MimoOCR-portable"
-Remove-Item $staging -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $staging | Out-Null
-Copy-Item target\release\mimo-ocr-app.exe $staging\
-Copy-Item assets\models\tessdata $staging\tessdata -Recurse
-# İsteğe bağlı app-local Tesseract
-Copy-Item assets\tesseract-runtime $staging\tesseract-runtime -Recurse
-Copy-Item LICENSE $staging\
-Copy-Item README.md $staging\
-Compress-Archive -Path "$staging\*" -DestinationPath target\release\MimoOCR-portable-windows-x64.zip -Force
+cd src-tauri
+cargo test    # TSV ayrıştırma + uçtan uca Türkçe OCR (test-tr.png kullanır)
 ```
-
----
-
-## Linux build
-
-> Linux masaüstü paketi **henüz resmî release** değildir; kaynaktan derleyebilirsiniz.
-
-### Bağımlılıklar (Debian/Ubuntu)
-
-```bash
-sudo apt update
-sudo apt install -y \
-  build-essential curl wget file \
-  libssl-dev libgtk-3-dev libayatana-appindicator3-dev \
-  librsvg2-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev \
-  libxdo-dev libxcb-randr0-dev \
-  tesseract-ocr tesseract-ocr-tur tesseract-ocr-eng \
-  python3 python3-pip
-pip3 install pillow pypdf python-docx openpyxl
-```
-
-### Derleme
-
-```bash
-curl -fsSL https://rustup.rs | sh
-# Node.js 18+ yükleyin
-npm install
-# Tauri Linux build
-npx @tauri-apps/cli build
-# veya npm run build:app
-```
-
-**Wayland:** Ekran yakalama için XDG Desktop Portal / PipeWire gerekli olabilir; X11 daha öngörülebilir.  
-**Paket:** `target/release/bundle/deb|appimage|rpm` (tauri hedefine göre)  
-**Flatpak:** Tauri Flatpak şablonu + `org.freedesktop.Platform` runtime.
-
-### tesseract
-
-```bash
-sudo apt install tesseract-ocr tesseract-ocr-tur tesseract-ocr-eng
-# veya projenin assets/models/tessdata klasörünü
-export TESSDATA_PREFIX=/path/to/MimoOcr/assets/models/tessdata
-```
-
----
-
-## macOS build
-
-```bash
-# Xcode CLT + Rust + Node
-xcode-select --install
-curl -fsSL https://rustup.rs | sh
-brew install tesseract tesseract-lang
-npm install
-npx @tauri-apps/cli build
-```
-
-- **İmzalama/noter:** Dağıtım için Apple Developer sertifikası + noter gerekir.
-- **Ekran kaydı izni:** Sistem Tercihleri → Güvenlik → Ekran Kaydı (ilgili izin sihirbazı).
-- Çıktı: `target/release/bundle/dmg` veya `macos` uygulama paketi.
-- Apple Vision motoru macOS’a özeldir; Windows release’te görünmez.
-
----
-
-## Mimari / Architecture
-
-```
-ui/                  WebView arayüzü (vanilla JS + i18n)
-src-tauri/           Tauri 2 kabuk: tray, shortcut, commands
-crates/mimo-ocr-core     OcrEngine trait, OcrDocument, preprocess
-crates/mimo-ocr-engines  tesseract-cli, windows-ocr, mock
-crates/mimo-ocr-capture  xcap ekran yakalama
-crates/mimo-ocr-cli      mimo CLI (doctor/ocr/bench/batch)
-assets/models/tessdata   tur + eng (+ osd)
-assets/tesseract-runtime İsteğe bağlı app-local Tesseract
-scripts/batch_extract.py PDF/DOCX/XLSX metin çıkarımı
-```
-
-Ortak sonuç modeli: tüm motorlar `OcrDocument` / `OcrRegion` üretir; arayüz motora bağlanmaz.
-
----
-
-## Kullanım özeti
-
-| Eylem | Nasıl |
-|-------|--------|
-| Tam ekran | **Ekran OCR** veya **Ctrl+Shift+O** |
-| Masaüstü bölge | **Bölge seç** → sürükle-bırak |
-| Önizleme + çoklu alan | **Önizleme ile seç** → alan, **Ctrl** ile ekle → OCR |
-| Belge | **Belge** sekmesi → yol veya **Dosya seç…** |
-| Toplu LLM çıktısı | **Toplu** → dosyalar → format MD/TXT → kaydet |
-| Motor değiştir | Header **Motor** veya kaynak görsele **sağ tık** |
-| Çıkış | ✕ veya tepsi → Çıkış |
-
----
-
-## Sürüm 0.2.0 — UYAP UDF desteği / v0.2.0 — UYAP UDF
-
-**Yeni:** Türkiye Adalet Bakanlığı **UYAP Doküman Formatı (`.udf`)** belge ve toplu iş akışına eklendi.
-
-### UDF nedir?
-UYAP’ta dilekçe, karar, tebligat, tutanak gibi adli belgeleri saklamak için kullanılan **özel konteyner**.  
-Teknik olarak **ZIP + `content.xml`** (bazen `signature.p7s` ve `binary/`).  
-CD/DVD’deki Universal Disk Format **karıştırılmamalıdır.**
-
-### Mimo OCR 0.2.0 ne yapıyor?
-| İş | Açıklama |
-|----|----------|
-| **UDF okuma** | `.udf` dosyası ZIP olarak açılır; `content.xml` metni çıkarılır |
-| **Belge sekmesi** | UDF yolunu seçin → metin görünümü (LLM’e girdi) |
-| **Toplu sekmesi** | UDF + görsel/PDF/Office birlikte; TXT/MD çıktısı |
-| **Paragraf yapısı** | `paragraph` / satır düğümlerinden okunabilir metin |
-| **İmza katmanı** | `signature.p7s` varsa “imza mevcut” notu; imza **metne çevrilmez / doğrulanmaz** |
-| **Gömülü nesneler** | `binary/` sayısı not edilir; resimler ayrı OCR’a girmez |
-| **RTF parçaları** | XML içindeki zengin metin parçaları sade metne indirgenir |
-
-### Örnek çıktı
-```
-[UYAP UDF] content=content.xml
-[e-signature present — not exported as text]
-
-İSTİNAF DİLEKÇESİ
-İstanbul 2. Asliye Hukuk Mahkemesi...
-Davacı: ...
-```
-
-### Sınırlar
-- Şifreli / bozuk UDF açılmaz  
-- **Yalnız görsel** taranmış belgede `content.xml` metin yoksa metin boş kalır; UYAP Editörü ile PDF’e çevirip görsel olarak işleyin  
-- Yargı sonucu doğrulaması / imza teyidi **bu sürümde yok**
-
-### Dosya seçiciler
-Belge ve Toplu filtrelerinde **`.udf`** uzantısı listelenir.
-
----
 
 ## Yol haritası (özet)
 
-- [x] Phase 0 — motor arayüzü, tessdata, ölçüm
-- [x] Phase 1 — Tauri UI, tepsi, kısayol, bölge OCR
-- [x] Windows OCR motoru
-- [x] Toplu MD/TXT + LLM çıktısı
-- [x] i18n + tema + çok motorlu sağ tık
-- [x] **v0.2.0 — UYAP UDF metin çıkarımı (belge + toplu)**
-- [ ] leptess in-process Tesseract
-- [ ] ort + PaddleOCR kalite paketi
-- [ ] macOS/Linux resmî release
-- [ ] ocrs (deneysel, Latin)
+- ~~Aşama 2: model yöneticisi~~ → **v0.3.0'da tamamlandı** (otomatik güncelleme altyapısı eklendi, macOS/Linux bekliyor)
+- Aşama 3: PDF, toplu işleme, aranabilir PDF
+- Aşama 4: `ort` + PaddleOCR "Yüksek Doğruluk" motoru, akıllı yedekleme
+- Aşama 5: tablo/form/düzen analizi, yerel çeviri, eklentiler
 
----
+Ayrıntılar: `rapor.html`
 
-## Lisans / License
+## Lisans
 
-Apache License 2.0 — bkz. [LICENSE](./LICENSE)
+Apache License 2.0 — bkz. `LICENSE`.
 
-Üçüncü taraf: Tesseract (Apache-2.0), Windows OCR (platform), `ort` (MIT), `ocrs` (MIT/Apache-2.0) vb.  
-Dağıtımda `THIRD_PARTY_NOTICES` eklenmesi önerilir.
-
----
-
-## Katkı / Contributing
-
-Issue ve PR açabilirsiniz.  
-Motor ekleme: `mimo-ocr-core::OcrEngine` implement edin → `EngineRegistry`’ye kaydedin → UI listesine otomatik düşer.
-
----
-
-## İletişim / Links
-
-| | |
-|--|--|
-| Geliştirici / Developer | [Mesut Demirci](https://www.linkedin.com/in/mesutdemirci/) |
-| GitHub | [github.com/mesutde/MimoOcr](https://github.com/mesutde/MimoOcr) |
-| Yapay zekâ / AI | Xiaomi MiMo Developers — **MiMo-X Pro** |
-
----
-
-*Mimo OCR — ekrandaki metin, anında sizin; analiz için hazır.*
+**Geliştirici:** Mesut Demirci · **Yapay zekâ desteği:** Xiaomi MiMo Developers — MiMo-X Pro

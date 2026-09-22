@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mimo OCR</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="side">
+      <div class="brand">Mimo<span>OCR</span></div>
+      <button id="btn-capture" class="primary">Bölge Yakala <kbd>Ctrl+Shift+X</kbd></button>
+      <div class="row">
+        <button id="btn-open">Görsel Aç…</button>
+        <button id="btn-paste">Panodan OCR</button>
+      </div>
+      <div class="field">
+        <label for="sel-lang">OCR Dili</label>
+        <select id="sel-lang">
+          <option value="tur+eng">Türkçe + İngilizce</option>
+          <option value="tur">Türkçe</option>
+          <option value="eng">İngilizce</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sel-psm">Sayfa Modu (PSM)</label>
+        <select id="sel-psm">
+          <option value="3" selected>Otomatik</option>
+          <option value="6">Tek blok</option>
+          <option value="7">Tek satır</option>
+          <option value="11">Seyrek metin</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sel-scale">Ön İşleme</label>
+        <select id="sel-scale">
+          <option value="1" selected>Yok</option>
+          <option value="2">2× Büyüt</option>
+          <option value="3">3× Büyüt</option>
+        </select>
+      </div>
+      <div id="privacy">Tamamen cihazınızda işlendi · Ağ kullanılmadı</div>
+    </aside>
+    <main id="workspace">
+      <section id="preview-pane">
+        <div class="pane-title">Kaynak</div>
+        <div id="img-wrap"><span id="img-empty">Henüz görsel yok.<br/>Kısayol ile bölge yakalayın veya görsel açın.</span></div>
+      </section>
+      <section id="result-pane">
+        <div class="pane-title">
+          Sonuç
+          <span id="status" class="status"></span>
+        </div>
+        <textarea id="txt-result" placeholder="OCR sonucu burada görünecek…" spellcheck="false"></textarea>
+        <div class="row">
+          <button id="btn-copy" class="primary">Panoya Kopyala</button>
+          <button id="btn-save">Farklı Kaydet…</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

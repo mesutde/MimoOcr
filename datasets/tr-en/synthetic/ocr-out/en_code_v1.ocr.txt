@@ -1,3 +1,0 @@
-def recognize(image):
-return engine.run(image)
-# pipeline ready

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mimo OCR — Bölge Seç</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
+      font-family: "Segoe UI", system-ui, sans-serif; user-select: none; cursor: crosshair; }
+    #dim { position: fixed; inset: 0; background: rgba(8, 10, 14, 0.35); }
+    #rect {
+      position: fixed; display: none; border: 2px solid #5B8CFF;
+      background: rgba(91, 140, 255, 0.12); box-shadow: 0 0 0 9999px rgba(8, 10, 14, 0.35);
+    }
+    #size {
+      position: fixed; display: none; padding: 4px 10px; border-radius: 6px;
+      background: #1A1D24; color: #E8EAEF; font-size: 12px; border: 1px solid rgba(255,255,255,.15);
+      pointer-events: none; white-space: nowrap;
+    }
+    #hint {
+      position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+      padding: 8px 18px; border-radius: 999px; background: rgba(26,29,36,.92);
+      color: #C9CFDA; font-size: 13px; border: 1px solid rgba(255,255,255,.12);
+      pointer-events: none;
+    }
+    #hint b { color: #5B8CFF; }
+  </style>
+</head>
+<body>
+  <div id="dim"></div>
+  <div id="rect"></div>
+  <div id="size"></div>
+  <div id="hint">Alan seçmek için sürükleyin · <b>Esc</b> iptal · <b>Enter</b> son bölgeyi tekrarla</div>
+  <script type="module" src="/src/overlay.ts"></script>
+</body>
+</html>

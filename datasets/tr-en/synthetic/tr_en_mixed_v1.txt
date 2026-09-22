@@ -1,3 +1,0 @@
-Mimo OCR local engine
-Türkçe + English karışık satır
-confidence: 0.92 / güven skoru

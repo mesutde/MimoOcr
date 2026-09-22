@@ -1,47 +1,39 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Mimo OCR",
-  "version": "0.2.0",
-  "identifier": "ocr.mimo.desktop",
+  "version": "0.3.0",
+  "identifier": "com.mimo.ocr",
   "build": {
-    "frontendDist": "../ui"
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
         "title": "Mimo OCR",
-        "width": 920,
+        "width": 1020,
         "height": 680,
-        "minWidth": 640,
-        "minHeight": 480,
-        "resizable": true,
-        "visible": true,
-        "center": true
+        "minWidth": 760,
+        "minHeight": 520,
+        "visible": true
       }
     ],
     "security": {
       "csp": null
-    },
-    "trayIcon": {
-      "id": "main-tray",
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": false,
-      "tooltip": "Mimo OCR"
     }
   },
   "bundle": {
     "active": true,
     "targets": ["msi", "nsis"],
-    "icon": ["icons/icon.png", "icons/icon.ico"],
-    "category": "Productivity",
-    "shortDescription": "Local-first OCR",
-    "longDescription": "Mimo OCR — açık kaynak, çevrimdışı, çok motorlu masaüstü OCR",
-    "resources": {
-      "../assets/models/tessdata": "tessdata",
-      "../assets/tesseract-runtime": "tesseract-runtime"
-    }
-  },
-  "plugins": {}
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
 }

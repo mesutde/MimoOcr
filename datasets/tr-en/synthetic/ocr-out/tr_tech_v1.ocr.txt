@@ -1,3 +1,0 @@
-işletim sistemi: Windows
-ışık sensörü arızalı
-güncelleme gerekli

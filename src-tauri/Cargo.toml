@@ -1,34 +1,35 @@
 [package]
-name = "mimo-ocr-app"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-description = "Mimo OCR desktop app (Tauri 2) — Phase 1 Windows alpha"
-authors.workspace = true
-repository.workspace = true
+name = "mimo-ocr"
+version = "0.3.0"
+description = "Açık kaynak, çevrimdışı, çoklu motorlu masaüstü OCR"
+edition = "2021"
+rust-version = "1.77"
 
 [lib]
-name = "mimo_ocr_app_lib"
+name = "mimo_ocr_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-mimo-ocr-core.workspace = true
-mimo-ocr-engines.workspace = true
-mimo-ocr-capture.workspace = true
-tauri.workspace = true
-tauri-plugin-global-shortcut.workspace = true
-tauri-plugin-dialog.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-anyhow.workspace = true
-arboard.workspace = true
-base64.workspace = true
-image.workspace = true
-chrono.workspace = true
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-updater = "2"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"] }
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "gif", "webp"] }
+xcap = "0.7"
+arboard = "3"
 
-[features]
-default = ["custom-protocol"]
-custom-protocol = ["tauri/custom-protocol"]
+[profile.dev]
+incremental = true
+
+[profile.release]
+lto = true
+opt-level = 3

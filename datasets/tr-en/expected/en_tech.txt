@@ -1,4 +1,0 @@
-Error: connection refused
-localhost:8080
-user@example.com
-https://github.com/mimo-ocr
