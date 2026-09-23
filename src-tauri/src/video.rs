@@ -22,7 +22,10 @@ pub(crate) fn hide_console(cmd: &mut std::process::Command) {
     let _ = cmd;
 }
 
-/// `MIMO_PYTHON` → MiMo Desktop gomulu Python → PATH sirasiyla yorumlayici bulur.
+/// Yorumlayici secimi: `MIMO_PYTHON` → kurulumla gomulu `python/`
+/// → MiMo Desktop → sistem yollari → PATH (Store sahtesi elenir).
+/// Gecersiz aday yerine her zaman gercek calisan bir yorumlayici doner;
+/// hicbiri yoksa son care "python" (hata mesaji uretir).
 pub(crate) fn python_bin() -> String {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(p) = std::env::var("MIMO_PYTHON") {
@@ -30,6 +33,17 @@ pub(crate) fn python_bin() -> String {
             candidates.push(PathBuf::from(p));
         }
     }
+    // Kurulumla gomulu Python (exe yaninda veya gelistirme agacinda).
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("python/python.exe"));
+            candidates.push(dir.join("../python/python.exe"));
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("assets/python/python.exe"));
+    }
+    candidates.push(PathBuf::from("assets/python/python.exe"));
     if let Ok(base) = std::env::var("LOCALAPPDATA") {
         candidates.push(PathBuf::from(base).join(
             "Programs/Xiaomi MiMo AI/resources/runtimes/win32-x64/python/python.exe",
@@ -40,20 +54,67 @@ pub(crate) fn python_bin() -> String {
         r"C:\Program Files\Python313\python.exe",
     ));
     for c in &candidates {
-        if c.is_file() {
+        if c.is_file() && probe_python(&c.display().to_string()) {
             return c.display().to_string();
         }
     }
-    // PATH uzerinde ilk calisan yorumlayici
+    // PATH uzerinde ilk GERCEK yorumlayici (Store sahtesi atlanir).
     for c in ["python", "py", "python3"] {
-        let mut probe = std::process::Command::new(c);
-        probe.arg("--version");
-        hide_console(&mut probe);
-        if probe.output().map(|o| o.status.success()).unwrap_or(false) {
+        if probe_python(c) {
             return c.to_string();
         }
     }
     "python".to_string()
+}
+
+/// Aday yorumlayiciyi `--version` ile dogrular.
+/// Microsoft Store sahtesi (`WindowsApps`, "install from the Microsoft Store")
+/// bilerek elenir — yoksa Store penceresi acar.
+fn probe_python(bin: &str) -> bool {
+    if bin.to_ascii_lowercase().contains("windowsapps") {
+        return false;
+    }
+    // Store sahtesi genelde `...\WindowsApps\python.exe` yolundadir; cozumlenmis
+    // yolu da kontrol et (PATH'teki `python` oraya baglanabilir).
+    if let Ok(resolved) = which_resolve(bin) {
+        if resolved.to_ascii_lowercase().contains("windowsapps") {
+            return false;
+        }
+    }
+    let mut probe = std::process::Command::new(bin);
+    probe.arg("--version");
+    hide_console(&mut probe);
+    match probe.output() {
+        Ok(o) => {
+            if !o.status.success() {
+                return false;
+            }
+            let txt = format!(
+                "{}{}",
+                String::from_utf8_lossy(&o.stdout),
+                String::from_utf8_lossy(&o.stderr)
+            );
+            !txt.to_ascii_lowercase().contains("microsoft store")
+        }
+        Err(_) => false,
+    }
+}
+
+/// PATH uzerinden calistirilabilir dosyanin tam yolunu bulur (probe icin).
+fn which_resolve(bin: &str) -> Result<String, ()> {
+    if bin.contains('/') || bin.contains('\\') {
+        return Ok(bin.to_string());
+    }
+    let path = std::env::var_os("PATH").ok_or(())?;
+    for dir in std::env::split_paths(&path) {
+        for name in [format!("{bin}.exe"), bin.to_string()] {
+            let p = dir.join(&name);
+            if p.is_file() {
+                return Ok(p.display().to_string());
+            }
+        }
+    }
+    Err(())
 }
 
 /// `scripts/<name>` konumunu cozer (toplu is ayni cozumu kullanir).
@@ -128,10 +189,7 @@ pub struct VideoSupportInfo {
 #[tauri::command]
 pub fn video_support_info() -> VideoSupportInfo {
     let py = python_bin();
-    let mut probe = std::process::Command::new(&py);
-    probe.arg("--version");
-    hide_console(&mut probe);
-    let python_ok = probe.output().map(|o| o.status.success()).unwrap_or(false);
+    let python_ok = probe_python(&py);
 
     let script = video_script_path().map(|p| p.display().to_string());
     // ffmpeg: kurulumla gomulu ffmpeg/ dizini → PATH
@@ -392,4 +450,41 @@ pub async fn video_extract_batch(
     )
     .await
     .map_err(|e| format!("Video görevi yarıda kesildi: {e}"))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn store_sahtesi_elenir() {
+        // Calistirmadan elenmeli (Store penceresi acilmamali).
+        assert!(!probe_python(r"C:\WindowsApps\python.exe"));
+        assert!(!probe_python("WindowsApps/python3.exe"));
+        assert!(!probe_python("kesinlikle-yok-boyle-bir-python-xyz"));
+    }
+
+    #[test]
+    fn gomulu_python_calisir() {
+        let exe = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../assets/python/python.exe");
+        if !exe.is_file() {
+            eprintln!("assets/python yok — test atlandı (temiz klon + çevrimdışı derleme?)");
+            return;
+        }
+        let mut v = std::process::Command::new(&exe);
+        v.arg("--version");
+        hide_console(&mut v);
+        let out = v.output().expect("gömülü python çalışmalı");
+        assert!(out.status.success());
+        let txt = String::from_utf8_lossy(&out.stdout);
+        assert!(txt.contains("Python 3."), "çıktı: {txt}");
+        let mut libs = std::process::Command::new(&exe);
+        libs.args(["-c", "import reportlab, pypdf, openpyxl"]);
+        hide_console(&mut libs);
+        assert!(
+            libs.output().map(|o| o.status.success()).unwrap_or(false),
+            "reportlab/pypdf/openpyxl gömülü python'da olmalı"
+        );
+    }
 }

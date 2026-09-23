@@ -27,3 +27,14 @@ Mimo OCR (Apache-2.0) aşağıdaki üçüncü taraf yazılımları gömülü ola
 
 - Kaynak: https://github.com/tesseract-ocr/tessdata_fast
 - Lisans: Apache-2.0 (eğitim verisi lisansları için kaynağa bakın).
+
+## Python 3.12 (Windows embeddable) + reportlab + pypdf + openpyxl (+ pillow)
+
+- CPython lisansı: **Python Software Foundation License** — https://docs.python.org/3/license.html
+- Kaynak: https://www.python.org/downloads/windows/ (embeddable zip)
+- `assets/python/` ve kurulu uygulamada `python/` altındadır. Yalnızca Video/Toplu/UDF
+  betiklerini çalıştırır; sisteme kurulmaz, PATH'i değiştirmez.
+- reportlab (BSD): https://github.com/MrBitBucket/reportlab
+- pypdf (BSD-3): https://github.com/py-pdf/pypdf
+- openpyxl (MIT): https://github.com/chronossc/openpyxl
+- pillow (HPND): https://github.com/python-pillow/Pillow (reportlab bağımlılığı)

@@ -14,15 +14,29 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.5.0)
+## İndir / Download (v0.5.1)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.5.0_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.5.0_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.0.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.5.1_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.5.1_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.1.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.5.1)
+
+- **Gömülü Python 3.12:** Video/Toplu/UDF/PDF akışları artık kurulumla gelen Python ile çalışır
+  (reportlab + pypdf + openpyxl dahil). **Başka PC'de Python kurmanıza gerek yok.**
+- **Store-sahte koruması:** `WindowsApps` Python sahtesi bilerek atlanır; ne seçimde ne denetimde Store penceresi açılmaz.
+- Kalan her şey v0.5.0 ile aynı (klasik arayüz, çok motor, yapısal UDF→PDF, gömülü Tesseract + ffmpeg, tam offline).
+
+## What's New (v0.5.1)
+
+- **Embedded Python 3.12** (reportlab + pypdf + openpyxl): Video/Batch/UDF/PDF flows work out of the box.
+  **No Python install needed on other PCs.**
+- **Store-stub guard:** the `WindowsApps` fake Python is skipped everywhere.
+- Everything else as in v0.5.0.
 
 ---
 
@@ -92,7 +106,7 @@ Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All
 **MSI:** `Mimo.OCR_0.5.0_x64_en-US.msi` — kurumsal dağıtım / enterprise deployment.
 **Portable:** ZIP'i aç, `mimo-ocr.exe` çalıştır. Yanında `tessdata/`, `tesseract-runtime/`, `ffmpeg/`, `models.json`, `scripts/` gelir. / Unzip, run `mimo-ocr.exe`.
 
-> Not / Note: Video sekmesi sistem Python'unu kullanır (`MIMO_PYTHON` ile yol verilebilir). Toplu Office/PDF için `pypdf`/`python-docx` gerekir (MiMo Python'da hazır). / The Video tab uses system Python; batch Office/PDF needs `pypdf`/`python-docx`.
+> Not / Note: Video sekmesi **kurulumla gelen Python'u** kullanır (gerekirse `MIMO_PYTHON` ile başka yol verilebilir). Toplu Office/PDF için ek kuruluma gerek yoktur (reportlab/pypdf/openpyxl gömülü). / The Video tab uses the **bundled Python** (`MIMO_PYTHON` overrides). No extra installs needed.
 
 ---
 
@@ -177,6 +191,8 @@ scripts/             batch_extract.py (PDF/DOCX/XLSX/PPTX/UDF/metin)
                      text_to_pdf.py · udf_to_pdf.py (yapısal) · merge_pdfs.py
                      video_extract.py (ffmpeg + Tesseract)
 assets/tesseract-runtime  Tesseract 5.4.0 (Windows, kuruluma gömülü)
+assets/ffmpeg             ffmpeg 9.0.2 + ffprobe (kuruluma gömülü)
+assets/python             Python 3.12 + reportlab/pypdf/openpyxl (kuruluma gömülü)
 tessdata/            tur + eng + osd (+ configs)
 ```
 
