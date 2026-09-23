@@ -121,14 +121,40 @@ def run(cmd: list[str], timeout: int = 120) -> subprocess.CompletedProcess:
 
 
 def which_or_none(name: str) -> str | None:
-    """PATH (gömülü ffmpeg dizini dahil) uzerinden coz, yoksa None."""
+    """PATH uzerinden coz; gorele/bozuk eslesmeleri ele (mutlak + dosya sarti)."""
     found = shutil.which(name)
-    return found
+    if not found:
+        return None
+    abs_path = os.path.abspath(found)
+    if not os.path.isfile(abs_path):
+        return None
+    return abs_path
+
+
+def bundled_tool(name: str) -> str | None:
+    """Kurulumla gomulu ffmpeg/ffprobe: exe-yani -> depo kokleri, mutlak yol."""
+    exe = Path(sys.executable).resolve()
+    roots = [exe.parent, *list(exe.parents)[:6], _repo_root()]
+    try:
+        cwd = Path.cwd()
+        roots.append(cwd)
+    except OSError:
+        pass
+    seen = set()
+    for root in roots:
+        if root in seen:
+            continue
+        seen.add(root)
+        for cand in (root / "ffmpeg" / name, root / "assets" / "ffmpeg" / name):
+            if cand.is_file():
+                return str(cand.resolve())
+    return None
 
 
 def probe_tool(name: str) -> tuple[str, bool, str]:
     """name --version sondasi; (kullanilan_yol, tamam_mi, surum_satiri)."""
-    path = which_or_none(name) or name
+    exe = name if name.lower().endswith(".exe") else name + ".exe"
+    path = bundled_tool(exe) or which_or_none(name) or name
     try:
         r = run([path, "-version"], timeout=20)
         line = ((r.stdout or b"").decode(errors="replace").splitlines() or ["?"])[0][:120]
@@ -140,7 +166,7 @@ def probe_tool(name: str) -> tuple[str, bool, str]:
 
 
 def video_duration_sec(path: Path) -> float:
-    fp = which_or_none("ffprobe") or "ffprobe"
+    fp = bundled_tool("ffprobe.exe") or which_or_none("ffprobe") or "ffprobe"
     try:
         r = run(
             [
@@ -194,7 +220,7 @@ def extract_frames_adaptive(
     max_frames: int = 180,
 ) -> list[Path]:
     """Extract frames; more samples when content changes slowly (slow scroll)."""
-    ff = which_or_none("ffmpeg") or "ffmpeg"
+    ff = bundled_tool("ffmpeg.exe") or which_or_none("ffmpeg") or "ffmpeg"
     dur = video_duration_sec(video)
     if dur <= 0:
         dur = 30.0

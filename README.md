@@ -14,15 +14,28 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.5.2)
+## İndir / Download (v0.5.3)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.5.2_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.5.2_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.2.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.5.3_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.5.3_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.3.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.5.3)
+
+- **Video ffmpeg seçimi düzeltildi:** Betik, gömülü `ffmpeg/ffprobe`'u dosya olarak doğrulanmış
+  **mutlak yolla** seçer (önce kurulum dizini, sonra PATH); göreli/bozuk eşleşmeler elenir.
+  `[ffmpeg]` log satırı artık gerçek yolu gösterir.
+- Kalan her şey v0.5.2 ile aynı.
+
+## What's New (v0.5.3)
+
+- **Video ffmpeg resolution fixed:** bundled `ffmpeg`/`ffprobe` are picked by verified absolute path
+  (install dir first, then PATH); relative/broken matches are rejected.
+- Everything else as in v0.5.2.
 
 ## Yenilikler (v0.5.2)
 
