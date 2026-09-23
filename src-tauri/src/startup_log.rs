@@ -41,6 +41,7 @@ pub fn webview2_version() -> String {
         for hive in ["HKLM", "HKCU"] {
             for view in ["/reg:64", "/reg:32"] {
                 let mut cmd = std::process::Command::new("reg");
+                cmd.stdin(std::process::Stdio::null());
                 cmd.args([
                     "query",
                     &format!("{hive}\\{KEY}\\{GUID}"),

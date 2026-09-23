@@ -15,11 +15,13 @@ pub(crate) fn hide_console(cmd: &mut std::process::Command) {
     use std::os::windows::process::CommandExt;
     // 0x08000000 = CREATE_NO_WINDOW (konsol penceresi acarip kapatmaz)
     cmd.creation_flags(0x08000000);
+    // Pencereli surecten dogan konsol cocuklari gecersiz stdin'de takilmasin
+    cmd.stdin(std::process::Stdio::null());
 }
 
 #[cfg(not(windows))]
 pub(crate) fn hide_console(cmd: &mut std::process::Command) {
-    let _ = cmd;
+    cmd.stdin(std::process::Stdio::null());
 }
 
 /// Yorumlayici secimi: `MIMO_PYTHON` → kurulumla gomulu `python/`
@@ -269,6 +271,11 @@ pub async fn video_extract_batch(
             let _ = handle.emit(
                 "video-log",
                 format!("[start] {} video → {}", total, out_dir.display()),
+            );
+            let _ = handle.emit("video-log", format!("[python] {py}"));
+            let _ = handle.emit(
+                "video-log",
+                format!("[script] {}", script.display()),
             );
 
             for (i, file) in files.iter().enumerate() {

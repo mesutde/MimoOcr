@@ -109,6 +109,7 @@ def tessdata_dir(langs: str) -> str | None:
 
 def run(cmd: list[str], timeout: int = 120) -> subprocess.CompletedProcess:
     kwargs = dict(
+        stdin=subprocess.DEVNULL,  # GUI'den dogan surecte gecersiz stdin abort yapmasin
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         timeout=timeout,
@@ -119,25 +120,71 @@ def run(cmd: list[str], timeout: int = 120) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, **kwargs)
 
 
+def which_or_none(name: str) -> str | None:
+    """PATH (gömülü ffmpeg dizini dahil) uzerinden coz, yoksa None."""
+    found = shutil.which(name)
+    return found
+
+
+def probe_tool(name: str) -> tuple[str, bool, str]:
+    """name --version sondasi; (kullanilan_yol, tamam_mi, surum_satiri)."""
+    path = which_or_none(name) or name
+    try:
+        r = run([path, "-version"], timeout=20)
+        line = ((r.stdout or b"").decode(errors="replace").splitlines() or ["?"])[0][:120]
+        return path, (r.returncode == 0), line
+    except FileNotFoundError:
+        return path, False, "bulunamadı"
+    except Exception as e:
+        return path, False, f"sonda hatası: {e}"
+
+
 def video_duration_sec(path: Path) -> float:
-    fp = shutil.which("ffprobe") or "ffprobe"
-    r = run(
-        [
-            fp,
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(path),
-        ],
-        timeout=30,
-    )
+    fp = which_or_none("ffprobe") or "ffprobe"
+    try:
+        r = run(
+            [
+                fp,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(path),
+            ],
+            timeout=30,
+        )
+    except FileNotFoundError:
+        _p("[warn] ffprobe yok — süre 30sn varsayılacak")
+        return 0.0
     try:
         return float((r.stdout or b"0").decode().strip() or "0")
     except ValueError:
         return 0.0
+
+
+def run_extract(ff: str, video: Path, vf: str, pattern: Path, dur: float):
+    """ffmpeg kare cikarimi; warning seviyesinde cikti birakir (tani icin)."""
+    # Not: "-vsync 0" ffmpeg 8.0+ tarafindan kaldirildi ("Unrecognized option").
+    # fps filtresi kare zamanlamasini zaten yonetir; ek secenek gerekmez.
+    try:
+        return run(
+            [
+                ff,
+                "-hide_banner",
+                "-loglevel",
+                "warning",
+                "-i",
+                str(video),
+                "-vf",
+                vf,
+                str(pattern),
+            ],
+            timeout=max(60, int(dur) + 60),
+        )
+    except FileNotFoundError:
+        raise RuntimeError(f"ffmpeg bulunamadı: {ff} (kurulumun ffmpeg/ klasörü eksik?)")
 
 
 def extract_frames_adaptive(
@@ -147,7 +194,7 @@ def extract_frames_adaptive(
     max_frames: int = 180,
 ) -> list[Path]:
     """Extract frames; more samples when content changes slowly (slow scroll)."""
-    ff = shutil.which("ffmpeg") or "ffmpeg"
+    ff = which_or_none("ffmpeg") or "ffmpeg"
     dur = video_duration_sec(video)
     if dur <= 0:
         dur = 30.0
@@ -167,25 +214,23 @@ def extract_frames_adaptive(
     # Scale down for OCR speed/memory (tables still readable at 1280)
     vf = f"fps={fps:.3f},scale='min(1280,iw)':-2"
     pattern = work / "frame_%05d.png"
-    r = run(
-        [
-            ff,
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            str(video),
-            "-vf",
-            vf,
-            # Not: "-vsync 0" ffmpeg 8.0+ tarafından kaldırıldı ("Unrecognized option").
-            # fps filtresi kare zamanlamasını zaten yönetir; ek seçenek gerekmez.
-            str(pattern),
-        ],
-        timeout=max(60, int(dur) + 60),
-    )
+    r = run_extract(ff, video, vf, pattern, dur)
     if r.returncode != 0:
-        err = (r.stderr or b"").decode(errors="replace")[-400:]
-        raise RuntimeError(f"ffmpeg extract failed: {err}")
+        # Yedek deneme: olceksiz sade filtre (filtre/olcek suphesini eler).
+        _p("[warn] ölçekli çıkarma başarısız — sade filtreyle tekrar deneniyor")
+        vf_simple = f"fps={fps:.3f}"
+        r = run_extract(ff, video, vf_simple, pattern, dur)
+    if r.returncode != 0:
+        err = (r.stderr or b"").decode(errors="replace")[-400:].strip()
+        hint = ""
+        if not err:
+            hint = (
+                " (stderr boş: süreç sessiz öldü — Windows Güvenliği davranış "
+                "engeli/karantina ya da TEMP yazma iznini kontrol edin)"
+            )
+        raise RuntimeError(
+            f"ffmpeg extract failed [kod={r.returncode}] [{ff}]{hint}: {err}"
+        )
     frames = sorted(work.glob("frame_*.png"))
     # Enforce max_frames (keep evenly spaced)
     if len(frames) > max_frames:
@@ -214,7 +259,7 @@ def ocr_frame(
     if tessdata:
         env["TESSDATA_PREFIX"] = tessdata
         env["MIMO_TESSDATA"] = tessdata
-    kwargs = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, env=env, check=False)
+    kwargs = dict(stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, env=env, check=False)
     if sys.platform == "win32":
         kwargs["creationflags"] = 0x08000000
     try:
@@ -329,11 +374,30 @@ def main() -> int:
     args = ap.parse_args()
 
     video = Path(args.video)
-    if not video.exists():
+    if not video.is_file():
         print(f"video not found: {video}", file=sys.stderr)
         return 1
+    if video.stat().st_size == 0:
+        print(f"video boş (0 bayt): {video}", file=sys.stderr)
+        return 1
     out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"çıktı klasörü açılamadı: {out_dir}: {e}", file=sys.stderr)
+        return 1
+
+    ff_path, ff_ok, ff_ver = probe_tool("ffmpeg")
+    fp_path, fp_ok, fp_ver = probe_tool("ffprobe")
+    _p(f"[ffmpeg] {ff_path} :: {ff_ver}")
+    _p(f"[ffprobe] {fp_path} :: {fp_ver}")
+    if not ff_ok:
+        print(
+            "ffmpeg çalışmıyor (kurulumun ffmpeg/ klasörü eksik ya da "
+            "Windows Güvenliği engelliyor olabilir)",
+            file=sys.stderr,
+        )
+        return 1
 
     tesseract = find_tesseract()
     tessdata = tessdata_dir(args.lang)

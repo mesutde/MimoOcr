@@ -223,6 +223,7 @@ impl TesseractCli {
         std::fs::File::create(&in_path)?.write_all(image_png)?;
 
         let mut cmd = Command::new(&self.exe_path);
+        cmd.stdin(std::process::Stdio::null());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;

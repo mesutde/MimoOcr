@@ -161,11 +161,8 @@ pub fn set_engine_path(state: State<'_, AppState>, path: String) -> Result<Engin
     // Calistigini dogrula (--version)
     let mut cmd = std::process::Command::new(&p);
     cmd.arg("--version");
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
+    cmd.stdin(std::process::Stdio::null());
+    crate::video::hide_console(&mut cmd);
     let ok = cmd.output().map(|o| o.status.success()).unwrap_or(false);
     if !ok {
         return Err(OcrError::Image("Bu dosya Tesseract olarak çalıştırılamadı.".into()));
