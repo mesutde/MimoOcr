@@ -103,8 +103,8 @@ select, input[type="text"], input:not([type]) {
   display: block; outline: none; border: none; }
 #img-wrap.has-img { border-color: transparent; }
 #engine-menu {
-  position: absolute; background: var(--panel); border: 1px solid var(--border);
-  border-radius: 8px; padding: 4px; z-index: 10; min-width: 220px;
+  position: fixed; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px; z-index: 9999; min-width: 230px;
   box-shadow: 0 8px 24px rgba(0,0,0,.4);
 }
 #engine-menu[hidden] { display: none; }
@@ -114,6 +114,7 @@ select, input[type="text"], input:not([type]) {
 #engine-menu button:disabled { opacity: .4; }
 #engine-menu .menu-title { font-size: 11px; color: var(--faint); padding: 6px 10px 2px;
   text-transform: uppercase; letter-spacing: .05em; }
+#engine-menu .menu-sep { border-top: 1px solid var(--border); margin: 4px 2px; }
 
 textarea {
   flex: 1; resize: none; background: var(--panel); color: var(--text);

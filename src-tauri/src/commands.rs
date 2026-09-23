@@ -213,6 +213,23 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+/// Overlay'i gizler ve GERCEKTEN gizlenmesini bekler.
+/// `hide()` eszamansizdir; beklemeden yakalanirsa secim kutusu
+/// (mavi #rect / yesil coklu kutular) karenin icine islenir.
+/// Bestecinin yeniden cizmesi icin kisa pay birakilir.
+fn settle_overlay_hidden(app: &AppHandle) {
+    if let Some(ov) = overlay(app) {
+        let _ = ov.hide();
+        for _ in 0..66 {
+            match ov.is_visible() {
+                Ok(false) => break,
+                _ => std::thread::sleep(std::time::Duration::from_millis(15)),
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(150));
+    }
+}
+
 #[tauri::command]
 pub fn begin_capture(app: AppHandle, state: State<'_, AppState>) -> Result<Option<[f64; 4]>, OcrError> {
     if let Some(w) = app.get_webview_window("main") {
@@ -258,10 +275,9 @@ pub async fn complete_capture(
     width: f64,
     height: f64,
 ) -> Result<OcrDocument, OcrError> {
-    if let Some(ov) = overlay(&app) {
-        let _ = ov.hide();
-    }
-    show_main(&app);
+    // Once overlay tam gizlensin (secim kutusu kareye sizmasin), yakala,
+    // sonra ana pencereyi gosterip OCR'la.
+    settle_overlay_hidden(&app);
     *state.last_region.lock().unwrap() = Some([x, y, width, height]);
 
     let opts = state.options.lock().unwrap().clone();
@@ -272,6 +288,7 @@ pub async fn complete_capture(
     .await
     .map_err(|e| OcrError::Image(e.to_string()))??;
 
+    show_main(&app);
     let engine_id = active_engine_id(&state, None);
     run_ocr(&state, png, engine_id).await
 }
@@ -279,9 +296,15 @@ pub async fn complete_capture(
 /// Tam ekran OCR (Yakala sekmesindeki tek tuş + monitör seçici).
 #[tauri::command]
 pub async fn ocr_fullscreen(
+    app: AppHandle,
     state: State<'_, AppState>,
     monitor: Option<usize>,
 ) -> Result<OcrDocument, OcrError> {
+    // Uygulamanin kendisi kareye girmesin diye ana pencereyi de gizle.
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
+    settle_overlay_hidden(&app);
     let engine_id = active_engine_id(&state, None);
     let opts = state.options.lock().unwrap().clone();
     let idx = monitor.unwrap_or(0);
@@ -292,6 +315,7 @@ pub async fn ocr_fullscreen(
     .await
     .map_err(|e| OcrError::Image(e.to_string()))??;
 
+    show_main(&app);
     run_ocr(&state, png, engine_id).await
 }
 
@@ -309,20 +333,25 @@ pub async fn ocr_preview_regions(
     if regions.len() > 12 {
         return Err(OcrError::Image("En fazla 12 bölge".into()));
     }
-    if let Some(ov) = overlay(&app) {
-        let _ = ov.hide();
-    }
-    show_main(&app);
+    // Once overlay tam gizlensin (yesil kutular kareye sizmasin), tum
+    // bolgeleri yakala, sonra pencereyi gosterip OCR'la.
+    settle_overlay_hidden(&app);
     let engine_id = active_engine_id(&state, None);
-    let mut docs = Vec::with_capacity(regions.len());
-    for r in regions {
+    let mut pngs = Vec::with_capacity(regions.len());
+    for r in &regions {
         let opts = state.options.lock().unwrap().clone();
+        let (rx, ry, rw, rh) = (r[0], r[1], r[2], r[3]);
         let png = tauri::async_runtime::spawn_blocking(move || {
-            let raw = capture::capture_region(r[0], r[1], r[2], r[3])?;
+            let raw = capture::capture_region(rx, ry, rw, rh)?;
             capture::preprocess(&raw, opts.scale)
         })
         .await
         .map_err(|e| OcrError::Image(e.to_string()))??;
+        pngs.push(png);
+    }
+    show_main(&app);
+    let mut docs = Vec::with_capacity(pngs.len());
+    for png in pngs {
         docs.push(run_ocr(&state, png, engine_id.clone()).await?);
     }
     Ok(docs)
@@ -420,6 +449,25 @@ pub async fn ocr_bytes(
 pub fn copy_text(text: String) -> Result<(), OcrError> {
     let mut cb = arboard::Clipboard::new().map_err(|e| OcrError::Image(e.to_string()))?;
     cb.set_text(text).map_err(|e| OcrError::Image(e.to_string()))
+}
+
+/// Önizlemedeki resmi panoya kopyalar (sağ-tık menüdeki Kopyala).
+#[tauri::command]
+pub fn copy_image(image_base64: String) -> Result<(), OcrError> {
+    use base64::Engine as _;
+    let png = base64::engine::general_purpose::STANDARD
+        .decode(image_base64.trim())
+        .map_err(|e| OcrError::Image(format!("Görsel çözülemedi: {e}")))?;
+    let img = image::load_from_memory(&png).map_err(|e| OcrError::Image(e.to_string()))?;
+    let rgba = img.to_rgba8();
+    let (w, h) = (rgba.width() as usize, rgba.height() as usize);
+    let clip = arboard::ImageData {
+        width: w,
+        height: h,
+        bytes: rgba.into_raw().into(),
+    };
+    let mut cb = arboard::Clipboard::new().map_err(|e| OcrError::Image(e.to_string()))?;
+    cb.set_image(clip).map_err(|e| OcrError::Image(e.to_string()))
 }
 
 #[tauri::command]

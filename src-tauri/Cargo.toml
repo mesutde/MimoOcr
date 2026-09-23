@@ -1,6 +1,6 @@
 [package]
 name = "mimo-ocr"
-version = "0.5.3"
+version = "0.5.4"
 description = "Açık kaynak, çevrimdışı, çoklu motorlu masaüstü OCR"
 edition = "2021"
 rust-version = "1.77"
@@ -18,6 +18,7 @@ sha2 = "0.10"
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"] }
 sha2 = "0.10"
 serde = { version = "1", features = ["derive"] }

@@ -87,8 +87,9 @@ fn build_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     let mi_capture = MenuItem::with_id(app, "capture", "Bölge Yakala (Ctrl+Shift+X)", true, None::<&str>)?;
     let mi_show = MenuItem::with_id(app, "show", "Mimo OCR'ı Aç", true, None::<&str>)?;
+    let mi_clear = MenuItem::with_id(app, "clear-all", "Tümünü Temizle", true, None::<&str>)?;
     let mi_quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&mi_capture, &mi_show, &mi_quit])?;
+    let menu = Menu::with_items(app, &[&mi_capture, &mi_show, &mi_clear, &mi_quit])?;
 
     let Some(icon) = app.default_window_icon().cloned() else {
         eprintln!("Tepsi simgesi yok, tepsi atlanıyor.");
@@ -101,6 +102,11 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, ev| match ev.id().as_ref() {
             "capture" => open_overlay(app),
             "show" => show_main(app),
+            "clear-all" => {
+                use tauri::Emitter;
+                show_main(app);
+                let _ = app.emit("clear-all", ());
+            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -123,8 +129,21 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Ikinci calistirma: yeni pencere acma, mevcudu one getir.
+            show_main(app);
+        }))
+        .on_window_event(|window, event| {
+            // Kapat (X) pencereyi yok etmez, tepsiye gizler.
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
-            startup_log::mark("setup başladı (v0.5.0)");
+            startup_log::mark(&format!("setup başladı (v{})", env!("CARGO_PKG_VERSION")));
             // Baslik cubugu: uygulama adi + surum (surum Cargo'dan otomatik).
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.set_title(&format!("Mimo OCR v{}", env!("CARGO_PKG_VERSION")));
@@ -200,6 +219,7 @@ pub fn run() {
             commands::ocr_run,
             commands::ocr_bytes,
             commands::copy_text,
+            commands::copy_image,
             commands::save_text,
             commands::set_options,
             commands::get_options,

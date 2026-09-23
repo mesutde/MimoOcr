@@ -14,15 +14,33 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.5.3)
+## İndir / Download (v0.5.4)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.5.3_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.5.3_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.3.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.5.4_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.5.4_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.4.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.5.4)
+
+- **Klasik arayüz:** Yatay Yakala / Belge / Toplu / UDF / Video sekmeleri, motor seçici (Tesseract + Windows OCR),
+  TR/EN, koyu + açık tema, başlıkta sürüm.
+- **Sürükle-bırak:** Dosyaları sekmelere bırakın — Yakala'ya resim direkt OCR'lanır.
+- **Tepsi:** `✕` tepsiye gizler, tek-örnek koruması, "Tümünü Temizle".
+- **Belge:** Büyük belgelerde donma yok (görünüm sınırlı, tamamı kayda hazır) + Temizle.
+- **Sağ-tık:** İmleçte menü — motorla yeniden OCR + resmi panoya kopyalama.
+- **Temiz yakalama:** Seçim kutusu kareye sızmaz (gizlenme onayı + bekleme payı).
+- **Önizleme zoom:** Fare tekerleğiyle yakınlaştırma, çift tık sıfırlama.
+- **UDF → PDF:** Yapısal dönüştürücü + başlık kutucuğu + birleşik kipte aynı kalite.
+- **Tamamen çevrimdışı:** Telemetri/güncelleyici yok; Tesseract + ffmpeg + Python gömülü.
+
+## What's New (v0.5.4)
+
+- Classic tabbed UI, multi-engine, drag-drop, tray with hide + single instance + clear-all,
+  artifact-free capture, preview zoom, structured UDF→PDF, fully offline with bundled runtimes.
 
 ## Yenilikler (v0.5.3)
 

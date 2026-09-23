@@ -278,9 +278,58 @@ $<HTMLButtonElement>("btn-engine-path").addEventListener("click", async () => {
   }
 });
 
+// Kaynak önizlemede fare tekerleğiyle yakınlaştırma (çift tık sıfırlar).
+let previewZoom = 1;
+
+function zoomLabel(): string {
+  return uiLang === "tr"
+    ? `Yakınlaştırma: %${Math.round(previewZoom * 100)} (sıfırlamak için çift tık)`
+    : `Zoom: ${Math.round(previewZoom * 100)}% (double-click to reset)`;
+}
+
+function applyZoom(img: HTMLImageElement) {
+  if (previewZoom === 1) {
+    img.style.width = "";
+    img.style.maxWidth = "";
+    img.style.maxHeight = "";
+  } else {
+    img.style.maxWidth = "none";
+    img.style.maxHeight = "none";
+    img.style.width = `${previewZoom * 100}%`;
+  }
+  img.title = zoomLabel();
+}
+
+function resetZoom(img: HTMLImageElement) {
+  previewZoom = 1;
+  applyZoom(img);
+}
+
+function previewImg(): HTMLImageElement | null {
+  return ($("img-wrap") as HTMLElement).querySelector("img");
+}
+
+function bindPreviewZoom() {
+  const box = $("img-wrap") as HTMLElement;
+  box.addEventListener("wheel", (e) => {
+    const img = previewImg();
+    if (!img) return;
+    e.preventDefault();
+    const step = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    previewZoom = Math.max(0.2, Math.min(8, previewZoom * step));
+    applyZoom(img);
+  }, { passive: false });
+
+  box.addEventListener("dblclick", () => {
+    const img = previewImg();
+    if (img) resetZoom(img);
+  });
+}
+
 // Sağ-tık motor menüsü (önizleme)
 const engineMenu = $("engine-menu");
 const imgWrap = $("img-wrap");
+bindPreviewZoom();
 
 imgWrap.addEventListener("contextmenu", (e) => {
   e.preventDefault();
@@ -311,9 +360,26 @@ imgWrap.addEventListener("contextmenu", (e) => {
     });
     engineMenu.appendChild(b);
   }
-  const r = imgWrap.getBoundingClientRect();
-  engineMenu.style.left = `${Math.min(e.clientX - r.left, r.width - 230)}px`;
-  engineMenu.style.top = `${Math.min(e.clientY - r.top, r.height - 40)}px`;
+  const sep = document.createElement("div");
+  sep.className = "menu-sep";
+  engineMenu.appendChild(sep);
+  const cp = document.createElement("button");
+  cp.textContent = uiLang === "tr" ? "📋 Kopyala (resim)" : "📋 Copy (image)";
+  cp.addEventListener("click", async () => {
+    engineMenu.hidden = true;
+    try {
+      await invoke("copy_image", { imageBase64: lastImageBase64 });
+      setStatus(uiLang === "tr" ? "Resim panoya kopyalandı." : "Image copied.", "ok");
+    } catch (err) {
+      setStatus(String(err), "err");
+    }
+  });
+  engineMenu.appendChild(cp);
+  // İmleçte aç (ekran taşması korumalı)
+  const w = 240;
+  const h = Math.min(320, 60 + engineMenu.childElementCount * 36);
+  engineMenu.style.left = `${Math.max(4, Math.min(e.clientX, window.innerWidth - w))}px`;
+  engineMenu.style.top = `${Math.max(4, Math.min(e.clientY, window.innerHeight - h))}px`;
   engineMenu.hidden = false;
 });
 document.addEventListener("click", () => { engineMenu.hidden = true; });
@@ -365,6 +431,7 @@ function showResult(doc: OcrDocument) {
   imgWrap.innerHTML = "";
   imgWrap.appendChild(img);
   imgWrap.classList.add("has-img");
+  resetZoom(img);
   setStatus(`${doc.engine} · ${doc.language} · ${doc.elapsed_ms} ms${confSuffix(doc)}`, "ok");
 }
 
@@ -380,6 +447,7 @@ function showResults(docs: OcrDocument[]) {
   imgWrap.innerHTML = "";
   imgWrap.appendChild(img);
   imgWrap.classList.add("has-img");
+  resetZoom(img);
   const totalWords = docs.reduce((a, d) => a + d.words.length, 0);
   const totalMs = docs.reduce((a, d) => a + d.elapsed_ms, 0);
   setStatus(`${docs.length} alan · ${totalMs} ms · ${totalWords} kelime`, "ok");
@@ -493,6 +561,28 @@ const docPath = $<HTMLInputElement>("doc-path");
 const docResult = $<HTMLTextAreaElement>("doc-result");
 const docStatus = $("doc-status");
 let docBusy = false;
+// Tam metin bellekte durur; görünüm çok büyük belgelerde kısaltılır (donmayı önler).
+let docFullText = "";
+const DOC_VIEW_LIMIT = 300_000;
+
+function setDocResult(full: string) {
+  docFullText = full;
+  if (full.length > DOC_VIEW_LIMIT) {
+    docResult.value = full.slice(0, DOC_VIEW_LIMIT)
+      + (uiLang === "tr"
+        ? `\n\n…[görünüm kısaltıldı: ${full.length} karakterin tamamı kopyala/kaydet ile alınabilir]`
+        : `\n\n…[view truncated: full ${full.length} chars available via copy/save]`);
+  } else {
+    docResult.value = full;
+  }
+}
+
+function clearDoc() {
+  docPath.value = "";
+  docFullText = "";
+  docResult.value = "";
+  setDocStatus("");
+}
 
 function setDocStatus(msg: string, cls: "" | "ok" | "err" = "") {
   docStatus.textContent = msg;
@@ -521,7 +611,7 @@ $<HTMLButtonElement>("btn-doc-run").addEventListener("click", async () => {
   setDocStatus(t("working"));
   try {
     const r = await invoke<DocResult>("ocr_path", { path: docPath.value });
-    docResult.value = r.plainText;
+    setDocResult(r.plainText);
     const extra = r.kind === "image" && r.words.length
       ? ` · ${r.words.length} kelime`
       : ` · ${r.plainText.length} karakter`;
@@ -533,13 +623,15 @@ $<HTMLButtonElement>("btn-doc-run").addEventListener("click", async () => {
   }
 });
 
+$<HTMLButtonElement>("btn-doc-clear").addEventListener("click", clearDoc);
+
 $<HTMLButtonElement>("btn-doc-copy").addEventListener("click", async () => {
-  if (!docResult.value) return;
-  await invoke("copy_text", { text: docResult.value });
+  if (!docFullText) return;
+  await invoke("copy_text", { text: docFullText });
 });
 
 $<HTMLButtonElement>("btn-doc-save").addEventListener("click", async () => {
-  if (!docResult.value) return;
+  if (!docFullText) return;
   const path = await save({
     filters: [
       { name: "Metin", extensions: ["txt"] },
@@ -547,7 +639,7 @@ $<HTMLButtonElement>("btn-doc-save").addEventListener("click", async () => {
     ],
   });
   if (path) {
-    await invoke("save_text", { path, text: docResult.value });
+    await invoke("save_text", { path, text: docFullText });
     setDocStatus(String(path), "ok");
   }
 });
@@ -949,6 +1041,107 @@ listen<string>("video-log", (ev) => vlog(ev.payload));
 listen<Record<string, unknown>>("video-progress", (ev) => {
   const p = Number(ev.payload["percent"] ?? 0);
   videoBar.style.width = `${Math.max(0, Math.min(100, p))}%`;
+});
+
+// ---------------------------------------------------------------------------
+// Tümünü temizle (tepsi menüsü) + sürükle-bırak
+// ---------------------------------------------------------------------------
+
+function currentView(): string {
+  const active = document.querySelector(".tab.active") as HTMLElement | null;
+  return active?.dataset.view ?? "yakala";
+}
+
+function clearCapture() {
+  txtResult.value = "";
+  lastImageBase64 = "";
+  imgWrap.classList.remove("has-img");
+  imgWrap.innerHTML = `<span id="img-empty">${t("imgEmpty")}</span>`;
+  setStatus("");
+}
+
+function clearBatch() {
+  batchPaths = [];
+  batchOutputs.innerHTML = "";
+  batchBar.style.width = "0%";
+  setBatchStatus("");
+  renderBatchFiles();
+}
+
+function clearUdf() {
+  udfPaths = [];
+  udfOutputs.innerHTML = "";
+  udfBar.style.width = "0%";
+  setUdfStatus("");
+  renderUdfFiles();
+}
+
+function clearVideo() {
+  videoPaths = [];
+  videoOutputs.innerHTML = "";
+  videoLog.textContent = "";
+  videoBar.style.width = "0%";
+  videoStatus.textContent = "";
+  renderVideoFiles();
+}
+
+listen("clear-all", () => {
+  clearCapture();
+  clearDoc();
+  clearBatch();
+  clearUdf();
+  clearVideo();
+});
+
+const IMG_EXTS = ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp", "gif"];
+const DOC_EXTS = [...IMG_EXTS, "pdf", "docx", "xlsx", "pptx", "udf", "txt", "md"];
+const VIDEO_EXTS = ["mp4", "mov", "avi", "mkv", "webm", "m4v", "wmv", "flv"];
+
+function extOf(p: string): string {
+  const m = p.toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : "";
+}
+
+function dropNotSupported(view: string, n: number) {
+  const msg = uiLang === "tr"
+    ? `${view}: desteklenmeyen dosya (${n} atlandı)`
+    : `${view}: unsupported file (${n} skipped)`;
+  if (view === "yakala") setStatus(msg, "err");
+  else if (view === "belge") setDocStatus(msg, "err");
+  else if (view === "toplu") setBatchStatus(msg, "err");
+  else if (view === "udf") setUdfStatus(msg, "err");
+  else { videoStatus.textContent = msg; videoStatus.className = "status err"; }
+}
+
+listen<{ paths: string[] }>("tauri://drag-drop", async (ev) => {
+  const paths = (ev.payload?.paths ?? []).filter((p) => typeof p === "string");
+  if (paths.length === 0) return;
+  const view = currentView();
+  if (view === "yakala") {
+    const img = paths.find((p) => IMG_EXTS.includes(extOf(p)));
+    if (!img) { dropNotSupported(view, paths.length); return; }
+    await runOcr({ source: { kind: "file", path: img } });
+  } else if (view === "belge") {
+    const doc = paths.find((p) => DOC_EXTS.includes(extOf(p)));
+    if (!doc) { dropNotSupported(view, paths.length); return; }
+    docPath.value = doc;
+    ($<HTMLButtonElement>("btn-doc-run")).click();
+  } else if (view === "toplu") {
+    const ok = paths.filter((p) => DOC_EXTS.includes(extOf(p)));
+    ok.forEach((p) => { if (!batchPaths.includes(p)) batchPaths.push(p); });
+    renderBatchFiles();
+    if (ok.length < paths.length) dropNotSupported(view, paths.length - ok.length);
+  } else if (view === "udf") {
+    const ok = paths.filter((p) => extOf(p) === "udf");
+    ok.forEach((p) => { if (!udfPaths.includes(p)) udfPaths.push(p); });
+    renderUdfFiles();
+    if (ok.length < paths.length) dropNotSupported(view, paths.length - ok.length);
+  } else if (view === "video") {
+    const ok = paths.filter((p) => VIDEO_EXTS.includes(extOf(p)));
+    ok.forEach((p) => { if (!videoPaths.includes(p)) videoPaths.push(p); });
+    renderVideoFiles();
+    if (ok.length < paths.length) dropNotSupported(view, paths.length - ok.length);
+  }
 });
 
 // ---------------------------------------------------------------------------
