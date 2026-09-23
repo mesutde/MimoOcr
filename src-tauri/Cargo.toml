@@ -1,6 +1,6 @@
 [package]
 name = "mimo-ocr"
-version = "0.4.2"
+version = "0.5.0"
 description = "Açık kaynak, çevrimdışı, çoklu motorlu masaüstü OCR"
 edition = "2021"
 rust-version = "1.77"
@@ -28,6 +28,16 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 xcap = "0.7"
 arboard = "3"
 rfd = "0.17"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = [
+  "Media_Ocr",
+  "Graphics_Imaging",
+  "Storage_Streams",
+  "Globalization",
+  "Foundation",
+  "Foundation_Collections",
+] }
 
 [profile.dev]
 incremental = true

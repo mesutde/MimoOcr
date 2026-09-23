@@ -11,19 +11,19 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 #[cfg(windows)]
-fn hide_console(cmd: &mut std::process::Command) {
+pub(crate) fn hide_console(cmd: &mut std::process::Command) {
     use std::os::windows::process::CommandExt;
     // 0x08000000 = CREATE_NO_WINDOW (konsol penceresi acarip kapatmaz)
     cmd.creation_flags(0x08000000);
 }
 
 #[cfg(not(windows))]
-fn hide_console(cmd: &mut std::process::Command) {
+pub(crate) fn hide_console(cmd: &mut std::process::Command) {
     let _ = cmd;
 }
 
 /// `MIMO_PYTHON` → MiMo Desktop gomulu Python → PATH sirasiyla yorumlayici bulur.
-fn python_bin() -> String {
+pub(crate) fn python_bin() -> String {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(p) = std::env::var("MIMO_PYTHON") {
         if !p.trim().is_empty() {
@@ -56,31 +56,34 @@ fn python_bin() -> String {
     "python".to_string()
 }
 
+/// `scripts/<name>` konumunu cozer (toplu is ayni cozumu kullanir).
+pub(crate) fn repo_script(name: &str) -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("scripts").join(name));
+            candidates.push(dir.join("../scripts").join(name));
+            candidates.push(dir.join("../../scripts").join(name));
+            candidates.push(dir.join("resources/scripts").join(name));
+            candidates.push(dir.join("../resources/scripts").join(name));
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("scripts").join(name));
+    }
+    candidates.push(PathBuf::from("scripts").join(name));
+    if let Ok(mut extra) = std::env::current_exe() {
+        extra.pop();
+        candidates.push(extra.join("resources").join("scripts").join(name));
+    }
+    candidates.into_iter().find(|p| p.is_file())
+}
+
 /// `scripts/video_extract.py` konumunu cozer:
 /// exe yakinindaki `scripts/` ve `_up_/scripts` (kurulu app + tasinabilir) →
 /// gelistirme agacindaki `scripts/` → kaynak yanindaki `resources/`.
 fn video_script_path() -> Option<PathBuf> {
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            candidates.push(dir.join("scripts/video_extract.py"));
-            candidates.push(dir.join("../scripts/video_extract.py"));
-            candidates.push(dir.join("../../scripts/video_extract.py"));
-            // Tauri resource paketi: <exe>/resources/scripts/…
-            candidates.push(dir.join("resources/scripts/video_extract.py"));
-            candidates.push(dir.join("../resources/scripts/video_extract.py"));
-        }
-    }
-    if let Ok(cwd) = std::env::current_dir() {
-        candidates.push(cwd.join("scripts/video_extract.py"));
-    }
-    candidates.push(PathBuf::from("scripts/video_extract.py"));
-    // Tauri resource_dir (kurulu app)
-    if let Ok(mut extra) = std::env::current_exe() {
-        extra.pop();
-        candidates.push(extra.join("resources").join("scripts/video_extract.py"));
-    }
-    candidates.into_iter().find(|p| p.is_file())
+    repo_script("video_extract.py")
 }
 
 pub fn is_video_ext(ext: &str) -> bool {

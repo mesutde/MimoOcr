@@ -86,7 +86,21 @@ pub fn capture_region(x: f64, y: f64, w: f64, h: f64) -> Result<Vec<u8>, OcrErro
 }
 
 
-/// Dosyadan gÃ¶rÃ¼ntÃ¼ okur, PNG baytÄ± dÃ¶ner.
+/// Belirtilen monitörün tamamını yakalar (Tam ekran OCR).
+/// Sıra `list_monitors` ile aynı kaynaktan (xcap) gelir; geçersiz indeks ilk monitöre düşer.
+pub fn capture_monitor(index: usize) -> Result<Vec<u8>, OcrError> {
+    let monitors = xcap::Monitor::all().map_err(|e| OcrError::Image(e.to_string()))?;
+    if monitors.is_empty() {
+        return Err(OcrError::Image("Monitör bulunamadı".into()));
+    }
+    let m = monitors.get(index).or(monitors.first()).unwrap();
+    let img = m
+        .capture_image()
+        .map_err(|e| OcrError::Image(format!("Ekran yakalanamadı: {e}")))?;
+    encode_png(&DynamicImage::ImageRgba8(img))
+}
+
+/// Dosyadan görüntü okur, PNG baytı döner.
 pub fn load_file(path: &str) -> Result<Vec<u8>, OcrError> {
     let img = image::open(path).map_err(|e| OcrError::Image(format!("Dosya aÃ§Ä±lamadÄ±: {e}")))?;
     encode_png(&img)

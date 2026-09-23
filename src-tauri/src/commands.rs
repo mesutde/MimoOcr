@@ -13,8 +13,98 @@ pub struct AppState {
     /// OCR istekleri anlasilir bir hata dondurur.
     pub engine: Mutex<Option<Arc<TesseractCli>>>,
     pub options: Mutex<OcrOptions>,
+    /// Secili motor kimligi: "tesseract" | "windows-ocr"
+    pub active_engine: Mutex<String>,
     /// Son başarılı bölge seçimi (overlay yerel mantıksal koordinatları)
     pub last_region: Mutex<Option<[f64; 4]>>,
+}
+
+// ---------------------------------------------------------------------------
+// Motor kaydi (tesseract / windows-ocr)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineInfo {
+    pub id: String,
+    pub name: String,
+    pub available: bool,
+    pub detail: Option<String>,
+    pub active: bool,
+}
+
+fn engine_list(state: &State<'_, AppState>) -> Vec<EngineInfo> {
+    let active = state.active_engine.lock().unwrap().clone();
+    let tess = state.engine.lock().unwrap().clone();
+    let (tess_ok, tess_detail) = match &tess {
+        Some(e) => (true, Some(e.exe_path().display().to_string())),
+        None => (false, Some("bulunamadı".into())),
+    };
+    #[cfg(windows)]
+    let (win_ok, win_detail) = {
+        let langs = crate::engine_winocr::WindowsOcrEngine::available_languages();
+        if crate::engine_winocr::WindowsOcrEngine::available() {
+            (true, Some(format!("dil: {}", langs.join(", "))))
+        } else {
+            (false, Some("dil paketi yok".into()))
+        }
+    };
+    #[cfg(not(windows))]
+    let (win_ok, win_detail) = (false, Some("yalnız Windows".into()));
+    #[cfg(windows)]
+    let win_name = crate::engine_winocr::DISPLAY_NAME;
+    #[cfg(not(windows))]
+    let win_name = "Windows OCR (sistem)";
+    vec![
+        EngineInfo {
+            id: "tesseract".into(),
+            name: "Tesseract (gömülü)".into(),
+            available: tess_ok,
+            detail: tess_detail,
+            active: active == "tesseract",
+        },
+        EngineInfo {
+            id: "windows-ocr".into(),
+            name: win_name.into(),
+            available: win_ok,
+            detail: win_detail,
+            active: active == "windows-ocr",
+        },
+    ]
+}
+
+/// Header'daki motor seciciyi besler.
+#[tauri::command]
+pub fn list_engines(state: State<'_, AppState>) -> Vec<EngineInfo> {
+    engine_list(&state)
+}
+
+/// Motoru degistirir (kullanilamayan motora gecise izin vermez).
+#[tauri::command]
+pub fn set_engine(state: State<'_, AppState>, id: String) -> Result<Vec<EngineInfo>, OcrError> {
+    let ok = engine_list(&state)
+        .iter()
+        .any(|e| e.id == id && e.available);
+    if !ok {
+        return Err(OcrError::Image(format!("Motor kullanılamıyor: {id}")));
+    }
+    *state.active_engine.lock().unwrap() = id;
+    Ok(engine_list(&state))
+}
+
+pub(crate) fn active_engine_id(state: &State<'_, AppState>, override_id: Option<String>) -> String {
+    if let Some(id) = override_id {
+        if matches!(id.as_str(), "tesseract" | "windows-ocr") {
+            return id;
+        }
+    }
+    let cur = state.active_engine.lock().unwrap().clone();
+    if cur == "windows-ocr" {
+        cur
+    } else {
+        // Bilinmeyen/kaldirilmis motor kimligi tesseract'a duser.
+        "tesseract".to_string()
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -117,8 +207,20 @@ fn overlay(app: &AppHandle) -> Option<tauri::WebviewWindow> {
     app.get_webview_window("overlay")
 }
 
+/// Secim bitince/iptal olunca ana pencereyi tekrar gosterir.
+fn show_main(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
 #[tauri::command]
 pub fn begin_capture(app: AppHandle, state: State<'_, AppState>) -> Result<Option<[f64; 4]>, OcrError> {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
     if let Some(ov) = overlay(&app) {
         ov.show().map_err(|e| OcrError::Image(e.to_string()))?;
         ov.set_focus().map_err(|e| OcrError::Image(e.to_string()))?;
@@ -145,6 +247,7 @@ pub fn cancel_capture(app: AppHandle) -> Result<(), OcrError> {
     if let Some(ov) = overlay(&app) {
         let _ = ov.hide();
     }
+    show_main(&app);
     Ok(())
 }
 
@@ -161,6 +264,7 @@ pub async fn complete_capture(
     if let Some(ov) = overlay(&app) {
         let _ = ov.hide();
     }
+    show_main(&app);
     *state.last_region.lock().unwrap() = Some([x, y, width, height]);
 
     let opts = state.options.lock().unwrap().clone();
@@ -171,15 +275,71 @@ pub async fn complete_capture(
     .await
     .map_err(|e| OcrError::Image(e.to_string()))??;
 
-    run_ocr(&state, png).await
+    let engine_id = active_engine_id(&state, None);
+    run_ocr(&state, png, engine_id).await
+}
+
+/// Tam ekran OCR (Yakala sekmesindeki tek tuş + monitör seçici).
+#[tauri::command]
+pub async fn ocr_fullscreen(
+    state: State<'_, AppState>,
+    monitor: Option<usize>,
+) -> Result<OcrDocument, OcrError> {
+    let engine_id = active_engine_id(&state, None);
+    let opts = state.options.lock().unwrap().clone();
+    let idx = monitor.unwrap_or(0);
+    let png = tauri::async_runtime::spawn_blocking(move || {
+        let raw = capture::capture_monitor(idx)?;
+        capture::preprocess(&raw, opts.scale)
+    })
+    .await
+    .map_err(|e| OcrError::Image(e.to_string()))??;
+
+    run_ocr(&state, png, engine_id).await
+}
+
+/// Önizleme-içi çoklu alan: overlay'de Ctrl ile biriktirilen bölgeler tek
+/// seferde OCR'lanır, her bölgenin belgesi ayrı döner.
+#[tauri::command]
+pub async fn ocr_preview_regions(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    regions: Vec<[f64; 4]>,
+) -> Result<Vec<OcrDocument>, OcrError> {
+    if regions.is_empty() {
+        return Err(OcrError::Image("Bölge seçilmedi".into()));
+    }
+    if regions.len() > 12 {
+        return Err(OcrError::Image("En fazla 12 bölge".into()));
+    }
+    if let Some(ov) = overlay(&app) {
+        let _ = ov.hide();
+    }
+    show_main(&app);
+    let engine_id = active_engine_id(&state, None);
+    let mut docs = Vec::with_capacity(regions.len());
+    for r in regions {
+        let opts = state.options.lock().unwrap().clone();
+        let png = tauri::async_runtime::spawn_blocking(move || {
+            let raw = capture::capture_region(r[0], r[1], r[2], r[3])?;
+            capture::preprocess(&raw, opts.scale)
+        })
+        .await
+        .map_err(|e| OcrError::Image(e.to_string()))??;
+        docs.push(run_ocr(&state, png, engine_id.clone()).await?);
+    }
+    Ok(docs)
 }
 
 /// Dosya veya pano kaynağından OCR çalıştırır.
+/// `engine` verilirse (sağ-tık yeniden OCR) aktif motor yerine o kullanılır.
 #[tauri::command]
 pub async fn ocr_run(
     state: State<'_, AppState>,
     source: OcrSource,
+    engine: Option<String>,
 ) -> Result<OcrDocument, OcrError> {
+    let engine_id = active_engine_id(&state, engine);
     let opts = state.options.lock().unwrap().clone();
     let png = tauri::async_runtime::spawn_blocking(move || {
         let raw = match source {
@@ -191,15 +351,16 @@ pub async fn ocr_run(
     .await
     .map_err(|e| OcrError::Image(e.to_string()))??;
 
-    run_ocr(&state, png).await
+    run_ocr(&state, png, engine_id).await
 }
 
-async fn run_ocr(state: &State<'_, AppState>, png: Vec<u8>) -> Result<OcrDocument, OcrError> {
+async fn run_ocr(
+    state: &State<'_, AppState>,
+    png: Vec<u8>,
+    engine_id: String,
+) -> Result<OcrDocument, OcrError> {
     let opts = state.options.lock().unwrap().clone();
-    let engine = engine_or_err(state)?;
-    let doc = tauri::async_runtime::spawn_blocking(move || engine.recognize(&png, &opts))
-        .await
-        .map_err(|e| OcrError::Image(e.to_string()))??;
+    let doc = recognize_with(state, &png, &opts, &engine_id).await?;
 
     // Varsayılan davranış: sonucu otomatik panoya kopyala (ayardan kapatılabilir)
     let auto_copy = state.options.lock().unwrap().auto_copy;
@@ -209,6 +370,53 @@ async fn run_ocr(state: &State<'_, AppState>, png: Vec<u8>) -> Result<OcrDocumen
         }
     }
     Ok(doc)
+}
+
+/// Secili motorla (veya degistirilmis motorla) PNG uzerinden tanima.
+/// Toplu is de ayni dagitimi kullanir.
+pub(crate) async fn recognize_with(
+    state: &State<'_, AppState>,
+    png: &[u8],
+    opts: &OcrOptions,
+    engine_id: &str,
+) -> Result<OcrDocument, OcrError> {
+    let png = png.to_vec();
+    let opts = opts.clone();
+    let engine_id = engine_id.to_string();
+    match engine_id.as_str() {
+        #[cfg(windows)]
+        "windows-ocr" => {
+            tauri::async_runtime::spawn_blocking(move || {
+                crate::engine_winocr::WindowsOcrEngine.recognize_png(&png, &opts)
+            })
+            .await
+            .map_err(|e| OcrError::Image(e.to_string()))?
+        }
+        #[cfg(not(windows))]
+        "windows-ocr" => Err(OcrError::Image("Windows OCR yalnız Windows'ta".into())),
+        _ => {
+            let engine = engine_or_err(state)?;
+            tauri::async_runtime::spawn_blocking(move || engine.recognize(&png, &opts))
+                .await
+                .map_err(|e| OcrError::Image(e.to_string()))?
+        }
+    }
+}
+
+/// Önizlemedeki son görseli farklı motorla yeniden OCR'lar (sağ-tık menüsü).
+/// Bölge yakalamalarının dosya yolu olmadığı için base64 taşınır.
+#[tauri::command]
+pub async fn ocr_bytes(
+    state: State<'_, AppState>,
+    image_base64: String,
+    engine: Option<String>,
+) -> Result<OcrDocument, OcrError> {
+    use base64::Engine as _;
+    let engine_id = active_engine_id(&state, engine);
+    let png = base64::engine::general_purpose::STANDARD
+        .decode(image_base64.trim())
+        .map_err(|e| OcrError::Image(format!("Görsel çözülemedi: {e}")))?;
+    run_ocr(&state, png, engine_id).await
 }
 
 #[tauri::command]

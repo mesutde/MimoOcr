@@ -40,7 +40,12 @@ pub struct OcrOptions {
     /// Ön işleme büyütme katsayısı (1 = yok)
     pub scale: u32,
     /// OCR sonrası sonucu otomatik panoya kopyala
+    #[serde(default = "default_true")]
     pub auto_copy: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for OcrOptions {

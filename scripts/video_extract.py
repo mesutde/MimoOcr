@@ -177,8 +177,8 @@ def extract_frames_adaptive(
             str(video),
             "-vf",
             vf,
-            "-vsync",
-            "0",
+            # Not: "-vsync 0" ffmpeg 8.0+ tarafından kaldırıldı ("Unrecognized option").
+            # fps filtresi kare zamanlamasını zaten yönetir; ek seçenek gerekmez.
             str(pattern),
         ],
         timeout=max(60, int(dur) + 60),

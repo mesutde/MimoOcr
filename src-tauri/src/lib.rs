@@ -4,7 +4,10 @@
 
 mod capture;
 mod commands;
+mod batch;
 mod engine;
+#[cfg(windows)]
+mod engine_winocr;
 mod models;
 mod startup_log;
 mod video;
@@ -28,6 +31,10 @@ fn show_main(app: &tauri::AppHandle) {
 }
 
 fn open_overlay(app: &tauri::AppHandle) {
+    // Secim sirasinda ana pencere gizlenir ki kullanici istedigi alani secebilsin.
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
     if let Some(ov) = app.get_webview_window("overlay") {
         let _ = ov.show();
         let _ = ov.set_focus();
@@ -117,7 +124,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
-            startup_log::mark("setup başladı (v0.4.2)");
+            startup_log::mark("setup başladı (v0.5.0)");
+            // Baslik cubugu: uygulama adi + surum (surum Cargo'dan otomatik).
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_title(&format!("Mimo OCR v{}", env!("CARGO_PKG_VERSION")));
+            }
             startup_log::mark(&format!(
                 "webview2: {}",
                 startup_log::webview2_version()
@@ -133,6 +144,7 @@ pub fn run() {
                     app.manage(AppState {
                         engine: Mutex::new(Some(Arc::new(engine))),
                         options: Mutex::new(OcrOptions::default()),
+                        active_engine: Mutex::new("tesseract".to_string()),
                         last_region: Mutex::new(None),
                     });
                 }
@@ -142,6 +154,7 @@ pub fn run() {
                     app.manage(AppState {
                         engine: Mutex::new(None),
                         options: Mutex::new(OcrOptions::default()),
+                        active_engine: Mutex::new("tesseract".to_string()),
                         last_region: Mutex::new(None),
                     });
                 }
@@ -185,6 +198,7 @@ pub fn run() {
             commands::complete_capture,
             commands::re_capture_last,
             commands::ocr_run,
+            commands::ocr_bytes,
             commands::copy_text,
             commands::save_text,
             commands::set_options,
@@ -196,6 +210,13 @@ pub fn run() {
             commands::engine_status,
             commands::rescan_engine,
             commands::set_engine_path,
+            commands::list_engines,
+            commands::set_engine,
+            commands::ocr_fullscreen,
+            commands::ocr_preview_regions,
+            batch::list_monitors,
+            batch::ocr_path,
+            batch::batch_process_files,
             video::video_support_info,
             video::video_extract_batch,
         ])

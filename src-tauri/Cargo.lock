@@ -2698,7 +2698,7 @@ checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
 name = "mimo-ocr"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "arboard",
  "base64 0.22.1",
@@ -2713,6 +2713,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-global-shortcut",
  "thiserror 2.0.20",
+ "windows",
  "xcap",
  "zip",
 ]

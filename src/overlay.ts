@@ -6,6 +6,13 @@ interface OcrDocument {
   [k: string]: unknown;
 }
 
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 const rect = document.getElementById("rect") as HTMLDivElement;
 const sizeLbl = document.getElementById("size") as HTMLDivElement;
 const hint = document.getElementById("hint") as HTMLDivElement;
@@ -16,8 +23,14 @@ let curX = 0;
 let curY = 0;
 let dragging = false;
 let busy = false;
+// Ctrl ile biriktirilen bölgeler (Önizleme seç / çoklu alan)
+let queued: Rect[] = [];
+const boxes: HTMLDivElement[] = [];
 
-function norm() {
+const BASE_HINT =
+  "Sürükle-bırak: tek alan · <b>Ctrl+sürükle</b>: çoklu alan · <b>Enter</b>: bitir · <b>Esc</b>: iptal";
+
+function norm(): Rect {
   const x = Math.min(startX, curX);
   const y = Math.min(startY, curY);
   const w = Math.abs(curX - startX);
@@ -40,6 +53,35 @@ function paint() {
   sizeLbl.style.top = ly + "px";
 }
 
+function paintQueued() {
+  // Eski kutuları temizle, birikenleri çiz
+  for (const b of boxes) b.remove();
+  boxes.length = 0;
+  queued.forEach((r, i) => {
+    const d = document.createElement("div");
+    d.style.cssText =
+      `position:fixed;left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;` +
+      `border:2px dashed #4ADE80;background:rgba(74,222,128,.1);` +
+      `color:#4ADE80;font-size:11px;padding:2px 6px;pointer-events:none;`;
+    d.textContent = `${i + 1}`;
+    document.body.appendChild(d);
+    boxes.push(d);
+  });
+  hint.innerHTML =
+    queued.length > 0
+      ? `${queued.length} alan seçildi · <b>Enter</b>: OCR · <b>Ctrl+sürükle</b>: ekle · <b>Esc</b>: iptal`
+      : BASE_HINT;
+}
+
+function resetOverlay() {
+  queued = [];
+  for (const b of boxes) b.remove();
+  boxes.length = 0;
+  rect.style.display = "none";
+  sizeLbl.style.display = "none";
+  hint.innerHTML = BASE_HINT;
+}
+
 window.addEventListener("mousedown", (e) => {
   if (busy || e.button !== 0) return;
   dragging = true;
@@ -58,23 +100,62 @@ window.addEventListener("mousemove", (e) => {
 window.addEventListener("mouseup", async (e) => {
   if (!dragging || busy || e.button !== 0) return;
   dragging = false;
-  const { x, y, w, h } = norm();
+  const r = norm();
   rect.style.display = "none";
   sizeLbl.style.display = "none";
-  if (w < 8 || h < 8) return; // çok küçük seçim: iptal say
+  if (r.w < 8 || r.h < 8) return; // çok küçük seçim: iptal say
+  // Ctrl basılıysa biriktir, overlay açık kalır
+  if (e.ctrlKey || e.metaKey) {
+    if (queued.length >= 12) {
+      hint.innerHTML = "En fazla 12 alan · <b>Enter</b>: OCR · <b>Esc</b>: iptal";
+      return;
+    }
+    queued.push(r);
+    paintQueued();
+    return;
+  }
   busy = true;
   hint.innerHTML = "OCR çalışıyor…";
   try {
-    const doc = await invoke<OcrDocument>("complete_capture", { x, y, width: w, height: h });
+    const doc = await invoke<OcrDocument>("complete_capture", {
+      x: r.x,
+      y: r.y,
+      width: r.w,
+      height: r.h,
+    });
     await emitTo("main", "ocr-result", doc);
   } catch (err) {
     await emitTo("main", "ocr-error", String(err));
   } finally {
     busy = false;
-    hint.innerHTML = "Alan seçmek için sürükleyin · <b>Esc</b> iptal";
+    resetOverlay();
   }
 });
 
+async function finishQueued() {
+  if (busy || queued.length === 0) return;
+  busy = true;
+  hint.innerHTML = `OCR çalışıyor… (${queued.length} alan)`;
+  try {
+    const docs = await invoke<OcrDocument[]>("ocr_preview_regions", {
+      regions: queued.map((r) => [r.x, r.y, r.w, r.h]),
+    });
+    await emitTo("main", "ocr-results", docs);
+  } catch (err) {
+    await emitTo("main", "ocr-error", String(err));
+  } finally {
+    busy = false;
+    resetOverlay();
+  }
+}
+
 window.addEventListener("keydown", async (e) => {
-  if (e.key === "Escape") await invoke("cancel_capture");
+  if (e.key === "Escape") {
+    resetOverlay();
+    await invoke("cancel_capture");
+  } else if (e.key === "Enter") {
+    await finishQueued();
+  }
 });
+
+hint.innerHTML = BASE_HINT;
