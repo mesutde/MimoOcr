@@ -14,15 +14,32 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.5.4)
+## İndir / Download (v0.5.5)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.5.4_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.5.4_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.4.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.5.5_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.5.5_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.5.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.5.5)
+
+- **Çift monitör / HiDPI isabeti:** Overlay sanal ekranı artık her yorumda tam kaplar
+  (konum minimumu, boyut maksimumu — sağda boşluk yok); fare koordinatı pencerenin
+  gerçek konumu + ölçeğinden fiziğe çevrilir, kesişim saf fiziksel uzayda yapılır.
+  Tek monitör davranışı değişmez.
+- **Tepsi tek tık:** Sol tık uygulamayı öne getirip doğrudan bölge yakalamayı başlatır.
+- Kalan her şey v0.5.4 ile aynı.
+
+## What's New (v0.5.5)
+
+- **Dual-monitor / HiDPI accuracy:** overlay covers the virtual screen under every
+  interpretation (no right-side gap); cursor maps via live window geometry in pure
+  physical space. Single-monitor behavior unchanged.
+- **Tray single-click** opens the app straight into region capture.
+- Everything else as in v0.5.4.
 
 ## Yenilikler (v0.5.4)
 

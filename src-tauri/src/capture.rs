@@ -6,39 +6,49 @@ use image::{imageops, DynamicImage, ImageFormat, RgbaImage};
 
 use crate::engine::OcrError;
 
-/// Sanal masaüstünü (tüm monitörlerin birleşimini) kaplayan overlay
-/// penceresinin yerel mantıksal koordinatlarıyla verilen bölgeyi yakalar.
-/// Her monitörün kendi DPI ölçeği fiziksel piksel dönüşümünde hesaba katılır.
-pub fn capture_region(x: f64, y: f64, w: f64, h: f64) -> Result<Vec<u8>, OcrError> {
+/// Overlay secimini yakalar — SAF FIZIKSEL matematik.
+///
+/// Fare CSS pikseli, overlay penceresinin GERCEK konumu (`outer_position`,
+/// fiziksel) ve olcegiyle fiziksele cevrilir:
+/// `vx = ov_ox + x * ov_sf`. Kesisim xcap monitor dikdortgenleriyle
+/// (ham degerler, fiziksel) yapilir; xcap `capture_image()` kendi
+/// (x, y, w, h) degerinden BitBlt yaptigi icin bitmap pikseli birebir
+/// ayni uzaydadir — bolme/carpma yok, koken varsayimi yok.
+///
+/// sf=1 iken eski matematige birebir indirgenir (tek monitorde davranis ayni).
+/// Karisik DPI'da her monitor parcasi kendi fiziksel yogunluguyla
+/// yerlesir (ekran fotografi gibi); olcek farki regularizasyonu gerekmez.
+pub fn capture_region(
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+    ov_ox: f64,
+    ov_oy: f64,
+    ov_sf: f64,
+) -> Result<Vec<u8>, OcrError> {
     let monitors = xcap::Monitor::all().map_err(|e| OcrError::Image(e.to_string()))?;
     if monitors.is_empty() {
         return Err(OcrError::Image("Monitör bulunamadı".into()));
     }
+    let sf = ov_sf.max(f64::EPSILON);
+    let vx = ov_ox + x * sf;
+    let vy = ov_oy + y * sf;
+    let vw = (w * sf).max(1.0);
+    let vh = (h * sf).max(1.0);
 
-    // Sanal masaüstü kökeni (en küçük mantıksal x/y); overlay penceresi burada başlar
-    let origin_x = monitors.iter().map(|m| m.x().unwrap_or(0)).min().unwrap_or(0) as f64;
-    let origin_y = monitors.iter().map(|m| m.y().unwrap_or(0)).min().unwrap_or(0) as f64;
-
-    // Overlay yerel koordinatı → sanal masaüstü mantıksal koordinatı
-    let vx = x + origin_x;
-    let vy = y + origin_y;
-
-    // Parçaların yerleştirileceği tuval; ilk kesişen monitörün ölçeği baz alınır
-    let mut canvas: Option<RgbaImage> = None;
-    let mut canvas_sf = 1.0f64;
-
+    let mut canvas = RgbaImage::new(vw.round().max(1.0) as u32, vh.round().max(1.0) as u32);
+    let mut hit = false;
     for m in &monitors {
-        let sf = m.scale_factor().unwrap_or(1.0) as f64;
         let mx = m.x().unwrap_or(0) as f64;
         let my = m.y().unwrap_or(0) as f64;
-        let mw = m.width().unwrap_or(0) as f64 / sf;
-        let mh = m.height().unwrap_or(0) as f64 / sf;
+        let mw = m.width().unwrap_or(0) as f64;
+        let mh = m.height().unwrap_or(0) as f64;
 
-        // Sanal masaüstü mantıksal uzayında kesişim
         let ix1 = vx.max(mx);
         let iy1 = vy.max(my);
-        let ix2 = (vx + w).min(mx + mw);
-        let iy2 = (vy + h).min(my + mh);
+        let ix2 = (vx + vw).min(mx + mw);
+        let iy2 = (vy + vh).min(my + mh);
         if ix2 <= ix1 || iy2 <= iy1 {
             continue;
         }
@@ -47,41 +57,22 @@ pub fn capture_region(x: f64, y: f64, w: f64, h: f64) -> Result<Vec<u8>, OcrErro
             .capture_image()
             .map_err(|e| OcrError::Image(format!("Ekran yakalanamadı: {e}")))?;
 
-        // Kesişimi monitör yerel fiziksel pikseline çevir
-        let px = ((ix1 - mx) * sf).round().max(0.0) as u32;
-        let py = ((iy1 - my) * sf).round().max(0.0) as u32;
-        let pw = ((ix2 - ix1) * sf).round().max(1.0) as u32;
-        let ph = ((iy2 - iy1) * sf).round().max(1.0) as u32;
-        let pw = pw.min(full.width().saturating_sub(px));
-        let ph = ph.min(full.height().saturating_sub(py));
+        let px = (ix1 - mx).round().max(0.0) as u32;
+        let py = (iy1 - my).round().max(0.0) as u32;
+        let pw = ((ix2 - ix1).round().max(1.0) as u32).min(full.width().saturating_sub(px));
+        let ph = ((iy2 - iy1).round().max(1.0) as u32).min(full.height().saturating_sub(py));
         if pw == 0 || ph == 0 {
             continue;
         }
         let piece = imageops::crop_imm(&full, px, py, pw, ph).to_image();
-
-        if canvas.is_none() {
-            canvas_sf = sf;
-            canvas = Some(RgbaImage::new(
-                (w * sf).round().max(1.0) as u32,
-                (h * sf).round().max(1.0) as u32,
-            ));
-        }
-        if let Some(c) = canvas.as_mut() {
-            // Parça farklı ölçekli monitörden geldiyse tuval ölçeğine yeniden boyutlandır
-            let piece = if (sf - canvas_sf).abs() > f64::EPSILON {
-                let nw = ((piece.width() as f64) * canvas_sf / sf).round().max(1.0) as u32;
-                let nh = ((piece.height() as f64) * canvas_sf / sf).round().max(1.0) as u32;
-                imageops::resize(&piece, nw, nh, imageops::FilterType::Lanczos3)
-            } else {
-                piece
-            };
-            let ox = ((ix1 - vx) * canvas_sf).round().max(0.0) as i64;
-            let oy = ((iy1 - vy) * canvas_sf).round().max(0.0) as i64;
-            imageops::overlay(c, &piece, ox, oy);
-        }
+        let ox = (ix1 - vx).round().max(0.0) as i64;
+        let oy = (iy1 - vy).round().max(0.0) as i64;
+        imageops::overlay(&mut canvas, &piece, ox, oy);
+        hit = true;
     }
-
-    let canvas = canvas.ok_or_else(|| OcrError::Image("Seçim ekran sınırları dışında".into()))?;
+    if !hit {
+        return Err(OcrError::Image("Seçim ekran sınırları dışında".into()));
+    }
     encode_png(&DynamicImage::ImageRgba8(canvas))
 }
 

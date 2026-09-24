@@ -42,26 +42,43 @@ fn open_overlay(app: &tauri::AppHandle) {
 }
 
 fn build_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
-    // Sanal masaüstü: tüm monitörlerin mantıksal birleşimi (Windows'ta köken
-    // negatif olabilir; mantıksal koordinatlar capture.rs ile uyumludur).
+    // Sanal masaustu kapsama garantisi.
+    //
+    // Tao `position()`/`size()` FIZIKSEL piksel dondurur; `.position()` /
+    // `.inner_size()` ise MANTIKSAL piksel bekler. Karisik DPI'da fiziksel
+    // konum + mantiksal boyut karisimi birlesimi KUCUK hesaplar ve pencere
+    // sagdan/alttan kisa kalir (bosluk) — cift monitor kaymasinin kaynagi.
+    //
+    // Cozum: iki birlesimi de hesapla; konumu MINIMUMA, boyutu MAKSIMUMA kur
+    // (+ pay). Tao her nasil yorumlarsa yorumlasin pencere ekrani TAM kaplar;
+    // disari tasan kisim gorunmezdir, bosluk ise hatadir. Secim eslemesi
+    // capture.rs'te pencerenin GERCEK konumundan yapildigi icin bu tasma
+    // isabeti etkilemez. sf=1 iken iki birlesim aynidir (tek monitorde
+    // davranis degismez).
     let monitors = app.available_monitors().unwrap_or_default();
-    let (mut min_x, mut min_y, mut max_x, mut max_y) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+    let (mut pmin_x, mut pmin_y, mut pmax_x, mut pmax_y) =
+        (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+    let (mut lmin_x, mut lmin_y, mut lmax_x, mut lmax_y) =
+        (0.0f64, 0.0f64, 0.0f64, 0.0f64);
     for (i, m) in monitors.iter().enumerate() {
-        let sf = m.scale_factor();
-        let mx = m.position().x as f64;
-        let my = m.position().y as f64;
-        let mw = m.size().width as f64 / sf;
-        let mh = m.size().height as f64 / sf;
+        let sf = m.scale_factor().max(f64::EPSILON);
+        let px = m.position().x as f64;
+        let py = m.position().y as f64;
+        let pw = m.size().width as f64;
+        let ph = m.size().height as f64;
+        let (lx, ly, lw, lh) = (px / sf, py / sf, pw / sf, ph / sf);
         if i == 0 {
-            min_x = mx;
-            min_y = my;
-            max_x = mx + mw;
-            max_y = my + mh;
+            (pmin_x, pmin_y, pmax_x, pmax_y) = (px, py, px + pw, py + ph);
+            (lmin_x, lmin_y, lmax_x, lmax_y) = (lx, ly, lx + lw, ly + lh);
         } else {
-            min_x = min_x.min(mx);
-            min_y = min_y.min(my);
-            max_x = max_x.max(mx + mw);
-            max_y = max_y.max(my + mh);
+            pmin_x = pmin_x.min(px);
+            pmin_y = pmin_y.min(py);
+            pmax_x = pmax_x.max(px + pw);
+            pmax_y = pmax_y.max(py + ph);
+            lmin_x = lmin_x.min(lx);
+            lmin_y = lmin_y.min(ly);
+            lmax_x = lmax_x.max(lx + lw);
+            lmax_y = lmax_y.max(ly + lh);
         }
     }
 
@@ -75,8 +92,13 @@ fn build_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
         .visible(false);
 
     if !monitors.is_empty() {
-        b = b.position(min_x, min_y)
-            .inner_size((max_x - min_x).max(64.0), (max_y - min_y).max(64.0));
+        // Kapsama garantisi: konum = iki uzayin minimumu (sol/ust her
+        // yorumda kapali), boyut = maksimumu + pay (sag/alt her yorumda kapali).
+        let ox = pmin_x.min(lmin_x);
+        let oy = pmin_y.min(lmin_y);
+        let ow = ((pmax_x - pmin_x).max(lmax_x - lmin_x) + 64.0).max(64.0);
+        let oh = ((pmax_y - pmin_y).max(lmax_y - lmin_y) + 64.0).max(64.0);
+        b = b.position(ox, oy).inner_size(ow, oh);
     } else {
         b = b.maximized(true);
     }
@@ -117,7 +139,9 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
                 ..
             } = ev
             {
+                // Tek tik: uygulamayi one getirip dogrudan bolge yakalamayi baslat.
                 show_main(tray.app_handle());
+                open_overlay(tray.app_handle());
             }
         })
         .build(app)?;
