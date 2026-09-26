@@ -14,15 +14,32 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.5.5)
+## İndir / Download (v0.6.0)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.5.5_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.5.5_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.5.5.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.6.0_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.6.0_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.0.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.6.0)
+
+- **Web sekmesi (yeni):** Bağlantıyı yapıştırın, tür otomatik saptanır —
+  Google Tablosu → CSV / Excel (XLSX) / Markdown; Google Belgesi (Docs) →
+  DOCX / ODT / TXT / PDF / Markdown; direkt dosya bağlantıları türe göre
+  OCR/metin hattına girer. Editör sayfaları (ONLYOFFICE vb.) için net mesaj.
+- **Dinamik OCR dili:** Dil listesi seçili motora göre dizilir —
+  Tesseract'ta tur/eng/ara/chi_sim/chi_tra/jpn/kor (+tur+eng), Windows OCR'da sistem paketleri.
+- Kalan her şey v0.5.5 ile aynı.
+
+## What's New (v0.6.0)
+
+- **New Web tab:** paste a link, type auto-detected — Google Sheets → CSV / Excel (XLSX) / Markdown;
+  Google Docs → DOCX / ODT / TXT / PDF / Markdown; direct file links route into OCR/text pipelines.
+- **Dynamic OCR languages:** the list follows the active engine.
+- Everything else as in v0.5.5.
 
 ## Yenilikler (v0.5.5)
 
@@ -273,6 +290,7 @@ All engines produce `OcrDocument`; the UI never depends on an engine.
 - [x] v0.4.1 — gömülü Tesseract, dayanıklı açılış
 - [x] v0.4.2 — açılış crash düzeltmesi, gömülü ffmpeg, startup.log
 - [x] **v0.5.0 — klasik arayüz, 3 yakalama modu, çok motor, Belge/Toplu/UDF, PDF çıktısı**
+- [x] **v0.6.0 — Web sekmesi (Google Sheets → CSV/XLSX/MD), dinamik motor dilleri**
 - [ ] macOS/Linux resmî paketleri
 - [ ] `ort` + PaddleOCR "Yüksek Doğruluk" motoru
 - [ ] Aranabilir PDF (görüntü + gizli metin katmanı)

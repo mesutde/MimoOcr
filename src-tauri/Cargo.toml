@@ -1,6 +1,6 @@
 [package]
 name = "mimo-ocr"
-version = "0.5.5"
+version = "0.6.0"
 description = "Açık kaynak, çevrimdışı, çoklu motorlu masaüstü OCR"
 edition = "2021"
 rust-version = "1.77"
@@ -23,6 +23,8 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 sha2 = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+csv = "1"
+rust_xlsxwriter = "0"
 thiserror = "2"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "gif", "webp"] }

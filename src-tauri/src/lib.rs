@@ -6,6 +6,8 @@ mod capture;
 mod commands;
 mod batch;
 mod engine;
+mod sheet;
+mod web;
 #[cfg(windows)]
 mod engine_winocr;
 mod models;
@@ -250,7 +252,7 @@ pub fn run() {
             commands::list_models,
             commands::install_model,
             commands::remove_model,
-            commands::available_languages,
+            commands::engine_languages,
             commands::engine_status,
             commands::rescan_engine,
             commands::set_engine_path,
@@ -261,6 +263,10 @@ pub fn run() {
             batch::list_monitors,
             batch::ocr_path,
             batch::batch_process_files,
+            sheet::import_sheet_url,
+            sheet::import_doc_url,
+            web::detect_web_url,
+            web::import_direct_url,
             video::video_support_info,
             video::video_extract_batch,
         ])

@@ -112,7 +112,7 @@ let uiLang: Lang = "tr";
 const I18N: Record<Lang, Record<string, string>> = {
   tr: {
     lblEngine: "Motor", tabCapture: "Yakala", tabDocument: "Belge", tabBatch: "Toplu",
-    tabUdf: "UDF", tabVideo: "Video", btnEnginePath: "Yolu Seç…", btnEngineRescan: "Tekrar Tara",
+    tabUdf: "UDF", tabWeb: "Web", tabVideo: "Video", btnEnginePath: "Yolu Seç…", btnEngineRescan: "Tekrar Tara",
     btnRegion: "Bölge seç", btnFull: "Ekran OCR",
     hintPreview: "Önizleme seç: overlay'de Ctrl+sürükle ile çoklu alan, Enter ile bitir.",
     lblMonitor: "Monitör", lblOcrLang: "OCR Dili", lblPsm: "Sayfa Modu (PSM)",
@@ -132,6 +132,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     btnBatchRun: "Toplu başlat", btnClear: "Temizle",
     videoDesc: "Kaydırılan ekran kayıtlarından metin çıkarır: ffmpeg kare örnekleme → Tesseract → scroll tekrarı eleme → CSV/TXT.",
     btnVideoAdd: "Video Ekle…", videoNoFiles: "Henüz video seçilmedi.",
+    webTip: "Herkese açık Google Sheets bağlantısını yapıştırın; CSV / XLSX / Markdown olarak kaydedilir.",
+    webUrlPh: "https://docs.google.com/spreadsheets/d/…",
+    btnWebRun: "İçe Aktar",
     lblScroll: "Scroll hızı", optAuto: "Otomatik", optFast: "Hızlı scroll", optSlow: "Yavaş scroll",
     lblQuality: "Kalite / Hız", optFastQ: "Hızlı (~120 kare)", optBalanced: "Dengeli (~180 kare)",
     optAccurate: "Yüksek (~280 kare)", btnVideoRun: "Videodan Çıkar",
@@ -139,7 +142,7 @@ const I18N: Record<Lang, Record<string, string>> = {
   },
   en: {
     lblEngine: "Engine", tabCapture: "Capture", tabDocument: "Document", tabBatch: "Batch",
-    tabUdf: "UDF", tabVideo: "Video", btnEnginePath: "Pick path…", btnEngineRescan: "Rescan",
+    tabUdf: "UDF", tabWeb: "Web", tabVideo: "Video", btnEnginePath: "Pick path…", btnEngineRescan: "Rescan",
     btnRegion: "Region select", btnFull: "Screen OCR",
     hintPreview: "Preview select: Ctrl+drag multi-area in overlay, Enter to finish.",
     lblMonitor: "Monitor", lblOcrLang: "OCR Language", lblPsm: "Page Mode (PSM)",
@@ -159,6 +162,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     btnBatchRun: "Start batch", btnClear: "Clear",
     videoDesc: "Extract text from scrolled screen recordings: ffmpeg sampling → Tesseract → scroll dedup → CSV/TXT.",
     btnVideoAdd: "Add videos…", videoNoFiles: "No videos selected.",
+    webTip: "Paste a public Google Sheets link; save as CSV / XLSX / Markdown.",
+    webUrlPh: "https://docs.google.com/spreadsheets/d/…",
+    btnWebRun: "Import",
     lblScroll: "Scroll speed", optAuto: "Auto", optFast: "Fast scroll", optSlow: "Slow scroll",
     lblQuality: "Quality / Speed", optFastQ: "Fast (~120 frames)", optBalanced: "Balanced (~180 frames)",
     optAccurate: "High (~280 frames)", btnVideoRun: "Extract from video",
@@ -175,13 +181,17 @@ function applyI18n() {
     const k = el.dataset.i18n!;
     if (k in I18N[uiLang]) el.textContent = I18N[uiLang][k];
   });
+  document.querySelectorAll<HTMLElement>("[data-i18n-ph]").forEach((el) => {
+    const k = el.dataset.i18nPh!;
+    if (k in I18N[uiLang]) (el as HTMLInputElement).placeholder = I18N[uiLang][k];
+  });
   $("btn-lang-tr").classList.toggle("active", uiLang === "tr");
   $("btn-lang-en").classList.toggle("active", uiLang === "en");
   document.documentElement.lang = uiLang;
 }
 
-$("btn-lang-tr").addEventListener("click", () => { uiLang = "tr"; applyI18n(); });
-$("btn-lang-en").addEventListener("click", () => { uiLang = "en"; applyI18n(); });
+$("btn-lang-tr").addEventListener("click", () => { uiLang = "tr"; applyI18n(); refreshOcrLangs(); });
+$("btn-lang-en").addEventListener("click", () => { uiLang = "en"; applyI18n(); refreshOcrLangs(); });
 
 // Tema
 $("btn-theme").addEventListener("click", () => {
@@ -197,6 +207,7 @@ const views: Record<string, HTMLElement> = {
   belge: $("view-belge"),
   toplu: $("view-toplu"),
   udf: $("view-udf"),
+  web: $("view-web"),
   video: $("view-video"),
 };
 document.querySelectorAll<HTMLButtonElement>(".tab").forEach((b) =>
@@ -236,9 +247,51 @@ async function refreshEngines() {
   } catch { /* seçim gizli kalır */ }
 }
 
+interface EngineLang {
+  code: string;
+}
+
+// Motorun destekledigi OCR dilleri: secili motora gore listelenir.
+const OCR_LANG_NAMES: Record<Lang, Record<string, string>> = {
+  tr: {
+    "tur+eng": "Türkçe + İngilizce",
+    tur: "Türkçe", eng: "İngilizce", ara: "Arapça",
+    chi_sim: "Çince (Basit)", chi_tra: "Çince (Geleneksel)",
+    jpn: "Japonca", kor: "Korece",
+  },
+  en: {
+    "tur+eng": "Turkish + English",
+    tur: "Turkish", eng: "English", ara: "Arabic",
+    chi_sim: "Chinese (Simplified)", chi_tra: "Chinese (Traditional)",
+    jpn: "Japanese", kor: "Korean",
+  },
+};
+
+function ocrLangLabel(code: string): string {
+  return OCR_LANG_NAMES[uiLang][code] ?? code;
+}
+
+async function refreshOcrLangs() {
+  try {
+    const langs = await invoke<EngineLang[]>("engine_languages");
+    if (langs.length === 0) return; // motor yoksa eski liste kalir
+    const prev = selLang.value;
+    selLang.innerHTML = "";
+    for (const l of langs) {
+      const o = document.createElement("option");
+      o.value = l.code;
+      o.textContent = ocrLangLabel(l.code);
+      selLang.appendChild(o);
+    }
+    selLang.value = langs.some((l) => l.code === prev) ? prev : langs[0].code;
+    await pushOptions();
+  } catch { /* eski liste kalir */ }
+}
+
 selEngine.addEventListener("change", async () => {
   try {
     engines = await invoke<EngineInfo[]>("set_engine", { id: selEngine.value });
+    await refreshOcrLangs();
     await pushOptions();
   } catch (e) {
     setStatus(String(e), "err");
@@ -889,6 +942,174 @@ listen<Record<string, unknown>>("batch-progress", (ev) => {
 });
 
 // ---------------------------------------------------------------------------
+// Web sekmesi (Google Sheets içe aktarma)
+// ---------------------------------------------------------------------------
+
+interface SheetResult {
+  path: string;
+  name: string;
+  rows: number;
+  cols: number;
+  format: string;
+}
+
+interface WebDetect {
+  kind: string;
+  label: string;
+  formats: string[];
+  detail?: string | null;
+}
+
+const FORMAT_LABELS: Record<string, string> = {
+  csv: "CSV", xlsx: "Excel (XLSX)", md: "Markdown",
+  docx: "Word (DOCX)", odt: "ODT", txt: "TXT", pdf: "PDF",
+};
+
+let webKind = "";
+
+async function detectWebKind() {
+  const badge = $("web-kind");
+  const url = webUrl.value.trim();
+  if (!url) {
+    badge.textContent = "";
+    webKind = "";
+    return;
+  }
+  try {
+    const d = await invoke<WebDetect>("detect_web_url", { url });
+    webKind = d.kind;
+    badge.textContent = "📄 " + d.label;
+    badge.className = "status " + (d.formats.length ? "ok" : "err");
+    if (d.detail && !d.formats.length) setWebStatus(d.detail, "err");
+    if (d.formats.length) {
+      const prev = selWebFormat.value;
+      selWebFormat.innerHTML = "";
+      for (const f of d.formats) {
+        const o = document.createElement("option");
+        o.value = f;
+        o.textContent = FORMAT_LABELS[f] ?? f.toUpperCase();
+        selWebFormat.appendChild(o);
+      }
+      if (d.formats.includes(prev)) selWebFormat.value = prev;
+    }
+  } catch (e) {
+    webKind = "";
+    badge.textContent = "";
+  }
+}
+
+let webDetectTimer = 0;
+function bindWebDetect() {
+  webUrl.addEventListener("input", () => {
+    if (webDetectTimer) window.clearTimeout(webDetectTimer);
+    webDetectTimer = window.setTimeout(detectWebKind, 500);
+  });
+}
+
+const webUrl = $<HTMLInputElement>("web-url");
+const webStatus = $("web-status");
+const webOutputs = $("web-outputs");
+const selWebFormat = $<HTMLSelectElement>("sel-web-format");
+let webOutDir = "";
+let webBusy = false;
+bindWebDetect();
+
+function setWebStatus(msg: string, cls: "" | "ok" | "err" = "") {
+  webStatus.textContent = msg;
+  webStatus.className = "status " + cls;
+}
+
+function clearWeb() {
+  webOutputs.innerHTML = "";
+  setWebStatus("");
+}
+
+$<HTMLButtonElement>("btn-web-out").addEventListener("click", async () => {
+  const sel = await open({ directory: true, multiple: false });
+  if (typeof sel === "string") {
+    webOutDir = sel;
+    ($("web-outdir") as HTMLElement).textContent = sel;
+  }
+});
+
+$<HTMLButtonElement>("btn-web-clear").addEventListener("click", () => {
+  webUrl.value = "";
+  ($("web-outdir") as HTMLElement).textContent = "…";
+  webOutDir = "";
+  clearWeb();
+});
+
+$<HTMLButtonElement>("btn-web-run").addEventListener("click", async () => {
+  if (webBusy || !webUrl.value.trim()) return;
+  if (!webOutDir) {
+    const sel = await open({ directory: true, multiple: false });
+    if (typeof sel !== "string") return;
+    webOutDir = sel;
+    ($("web-outdir") as HTMLElement).textContent = sel;
+  }
+  webBusy = true;
+  ($<HTMLButtonElement>("btn-web-run")).disabled = true;
+  setWebStatus(t("working"));
+  try {
+    // Tur onceden saptanmamissa simdi saptanir.
+    if (!webKind) await detectWebKind();
+    const url = webUrl.value.trim();
+    const fmt = selWebFormat.value;
+    webOutputs.innerHTML = "";
+    if (webKind === "doc") {
+      const r = await invoke<SheetResult>("import_doc_url", {
+        url, outDir: webOutDir, format: fmt,
+      });
+      setWebStatus(`✓ ${r.name}.${r.format} → ${r.path}`, "ok");
+      showWebOutput(r.path);
+    } else if (webKind === "file") {
+      const dto = await invoke<BatchResult>("import_direct_url", {
+        url, outDir: webOutDir, format: fmt,
+      });
+      setWebStatus(`${dto.okCount}/${dto.items.length} → ${dto.outDir}`, dto.failCount ? "err" : "ok");
+      webOutputs.innerHTML = "";
+      for (const it of dto.items) {
+        const div = document.createElement("div");
+        div.textContent = it.ok ? `✓ ${it.name}` : `✗ ${it.name}: ${it.error ?? ""}`;
+        if (it.ok) div.className = "fout";
+        webOutputs.appendChild(div);
+      }
+      if (dto.combinedPath) {
+        const div = document.createElement("div");
+        div.className = "fout";
+        div.textContent = "📦 " + dto.combinedPath;
+        webOutputs.appendChild(div);
+      }
+    } else if (webKind === "sheet") {
+      const r = await invoke<SheetResult>("import_sheet_url", {
+        url, outDir: webOutDir, format: fmt,
+      });
+      setWebStatus(`✓ ${r.name}.${r.format} · ${r.rows} satır × ${r.cols} sütun → ${r.path}`, "ok");
+      showWebOutput(r.path);
+    } else {
+      setWebStatus(
+        uiLang === "tr"
+          ? "Önce geçerli bir bağlantı girin (Google Tablosu/Belgesi veya dosya)."
+          : "Enter a valid link first (Google Sheet/Doc or file).",
+        "err",
+      );
+    }
+  } catch (e) {
+    setWebStatus(String(e), "err");
+  } finally {
+    webBusy = false;
+    ($<HTMLButtonElement>("btn-web-run")).disabled = false;
+  }
+});
+
+function showWebOutput(path: string) {
+  const div = document.createElement("div");
+  div.className = "fout";
+  div.textContent = "📦 " + path;
+  webOutputs.appendChild(div);
+}
+
+// ---------------------------------------------------------------------------
 // Video sekmesi
 // ---------------------------------------------------------------------------
 
@@ -1090,6 +1311,7 @@ listen("clear-all", () => {
   clearDoc();
   clearBatch();
   clearUdf();
+  clearWeb();
   clearVideo();
 });
 
@@ -1156,5 +1378,6 @@ refreshVideoReq();
 renderBatchFiles();
 renderVideoFiles();
 renderUdfFiles();
+refreshOcrLangs();
 pushOptions();
 txtResult.placeholder = t("imgEmpty");

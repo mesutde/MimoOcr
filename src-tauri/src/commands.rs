@@ -204,6 +204,15 @@ fn overlay(app: &AppHandle) -> Option<tauri::WebviewWindow> {
     app.get_webview_window("overlay")
 }
 
+/// Overlay penceresinin GERCEK geometrisi (fiziksel konum + olcek).
+/// Fare CSS pikseli buradan fiziksele cevrilir; varsayim yok.
+fn overlay_geometry(app: &AppHandle) -> Option<(f64, f64, f64)> {
+    let ov = overlay(app)?;
+    let pos = ov.outer_position().ok()?;
+    let sf = ov.scale_factor().ok()?;
+    Some((pos.x as f64, pos.y as f64, sf))
+}
+
 /// Secim bitince/iptal olunca ana pencereyi tekrar gosterir.
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
@@ -281,8 +290,14 @@ pub async fn complete_capture(
     *state.last_region.lock().unwrap() = Some([x, y, width, height]);
 
     let opts = state.options.lock().unwrap().clone();
+    // Overlay GERCEK geometrisi (canli): fare CSS pikseli buradan fiziksele
+    // cevrilir; koken/yerlesim varsayimi yok, cift monitor ofseti tutar.
+    let ov_geo = overlay_geometry(&app);
     let png = tauri::async_runtime::spawn_blocking(move || {
-        let raw = capture::capture_region(x, y, width, height)?;
+        let raw = match ov_geo {
+            Some((ox, oy, sf)) => capture::capture_region(x, y, width, height, ox, oy, sf)?,
+            None => capture::capture_region(x, y, width, height, 0.0, 0.0, 1.0)?,
+        };
         capture::preprocess(&raw, opts.scale)
     })
     .await
@@ -337,12 +352,16 @@ pub async fn ocr_preview_regions(
     // bolgeleri yakala, sonra pencereyi gosterip OCR'la.
     settle_overlay_hidden(&app);
     let engine_id = active_engine_id(&state, None);
+    let ov_geo = overlay_geometry(&app);
     let mut pngs = Vec::with_capacity(regions.len());
     for r in &regions {
         let opts = state.options.lock().unwrap().clone();
         let (rx, ry, rw, rh) = (r[0], r[1], r[2], r[3]);
         let png = tauri::async_runtime::spawn_blocking(move || {
-            let raw = capture::capture_region(rx, ry, rw, rh)?;
+            let raw = match ov_geo {
+                Some((ox, oy, sf)) => capture::capture_region(rx, ry, rw, rh, ox, oy, sf)?,
+                None => capture::capture_region(rx, ry, rw, rh, 0.0, 0.0, 1.0)?,
+            };
             capture::preprocess(&raw, opts.scale)
         })
         .await
@@ -509,21 +528,88 @@ pub fn remove_model(state: State<'_, AppState>, code: String) -> Result<(), OcrE
     crate::models::remove_model(&code, &tessdata_dir(&state)?)
 }
 
-/// Tesseract'ın o an kullanabildiği dilleri döner (dil seçim listesini besler).
+/// Secili motorun destekledigi OCR dilleri (on yuzdeki dil listesini besler).
+/// Tesseract: kurulu tessdata'dan; Windows OCR: sistem dil paketlerinden.
 #[tauri::command]
-pub fn available_languages(state: State<'_, AppState>) -> Result<Vec<String>, OcrError> {
-    let dir = tessdata_dir(&state)?;
-    let mut langs: Vec<String> = std::fs::read_dir(&dir)
-        .map_err(OcrError::Spawn)?
-        .filter_map(|e| e.ok())
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().into_owned();
-            name.strip_suffix(".traineddata")
-                .map(|s| s.to_string())
-                .filter(|s| s != "osd")
+pub fn engine_languages(
+    state: State<'_, AppState>,
+    engine: Option<String>,
+) -> Vec<EngineLang> {
+    match active_engine_id(&state, engine).as_str() {
+        #[cfg(windows)]
+        "windows-ocr" => {
+            let mut codes: Vec<String> =
+                crate::engine_winocr::WindowsOcrEngine::available_languages()
+                    .into_iter()
+                    .map(|t| win_tag_to_code(&t))
+                    .collect();
+            codes.sort();
+            codes.dedup();
+            // Windows motoru tur+eng yazimini da anlar; liste bossa temel ikili.
+            if codes.is_empty() {
+                codes = vec!["tur".into(), "eng".into()];
+            }
+            codes.into_iter().map(|code| EngineLang { code }).collect()
+        }
+        _ => {
+            let dir = state
+                .engine
+                .lock()
+                .unwrap()
+                .clone()
+                .and_then(|e| e.tessdata_dir.clone());
+            match dir {
+                Some(d) => {
+                    let mut codes = list_tessdata_langs(&d);
+                    // tur+eng her zaman onerilir (gömülü varsayılan).
+                    if codes.contains(&"tur".to_string())
+                        && codes.contains(&"eng".to_string())
+                        && !codes.contains(&"tur+eng".to_string())
+                    {
+                        codes.insert(0, "tur+eng".to_string());
+                    }
+                    codes.into_iter().map(|code| EngineLang { code }).collect()
+                }
+                None => vec![],
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct EngineLang {
+    pub code: String,
+}
+
+/// WinRT dil etiketini tesseract koduna cevirir (bilinmeyeni oldugu gibi birakir).
+fn win_tag_to_code(tag: &str) -> String {
+    match tag.to_ascii_lowercase().as_str() {
+        "tr" | "tr-tr" => "tur".into(),
+        "en" | "en-us" | "en-gb" => "eng".into(),
+        "ar" | "ar-sa" => "ara".into(),
+        "ja" | "ja-jp" => "jpn".into(),
+        "zh-hans" | "zh-cn" | "zh-sg" => "chi_sim".into(),
+        "zh-hant" | "zh-tw" | "zh-hk" => "chi_tra".into(),
+        "ko" | "ko-kr" => "kor".into(),
+        _ => tag.to_string(),
+    }
+}
+
+/// tessdata dizinindeki *.traineddata dosyalarindan dil kodlari (osd haric).
+fn list_tessdata_langs(dir: &std::path::Path) -> Vec<String> {
+    let mut codes: Vec<String> = std::fs::read_dir(dir)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter_map(|e| {
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    name.strip_suffix(".traineddata")
+                        .map(|s| s.to_string())
+                        .filter(|s| s != "osd")
+                })
+                .collect()
         })
-        .collect();
-    langs.sort();
-    Ok(langs)
+        .unwrap_or_default();
+    codes.sort();
+    codes
 }
 

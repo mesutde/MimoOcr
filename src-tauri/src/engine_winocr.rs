@@ -137,6 +137,11 @@ fn pick_win_engine(languages: &str) -> Result<WinOcr, OcrError> {
             "" => {}
             "tur" | "tr" | "tr-tr" => wanted.push("tr-TR".into()),
             "eng" | "en" | "en-us" | "en-gb" => wanted.push("en-US".into()),
+            "ara" | "ar" | "ar-sa" => wanted.push("ar-SA".into()),
+            "jpn" | "ja" | "ja-jp" => wanted.push("ja".into()),
+            "chi_sim" | "zh-hans" | "zh-cn" => wanted.push("zh-Hans".into()),
+            "chi_tra" | "zh-hant" | "zh-tw" => wanted.push("zh-Hant".into()),
+            "kor" | "ko" | "ko-kr" => wanted.push("ko".into()),
             other => wanted.push(other.to_string()),
         }
     }

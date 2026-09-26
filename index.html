@@ -30,6 +30,7 @@
       <button class="tab" data-view="belge" data-i18n="tabDocument">Belge</button>
       <button class="tab" data-view="toplu" data-i18n="tabBatch">Toplu</button>
       <button class="tab" data-view="udf" data-i18n="tabUdf">UDF</button>
+      <button class="tab" data-view="web" data-i18n="tabWeb">Web</button>
       <button class="tab" data-view="video" data-i18n="tabVideo">Video</button>
     </nav>
     <main id="workspace">
@@ -176,6 +177,33 @@
           <label class="check"><input type="checkbox" id="chk-udf-title" checked /> <span data-i18n="chkPdfTitle">PDF'e dosya adını başlık olarak yaz</span></label>
           <div id="udf-progress-wrap"><div id="udf-progress-bar"></div></div>
           <div id="udf-outputs" class="filelist"></div>
+        </section>
+      </div>
+      <!-- WEB (Google Sheets içe aktarma) -->
+      <div id="view-web" class="view" hidden>
+        <section class="doc-pane">
+          <div class="pane-title"><span data-i18n="tabWeb">Web</span><span id="web-kind" class="status"></span><span id="web-status" class="status"></span></div>
+          <div class="tip" data-i18n="webTip">Herkese açık Google Sheets bağlantısını yapıştırın; CSV / XLSX / Markdown olarak kaydedilir.</div>
+          <div class="row">
+            <input id="web-url" data-i18n-ph="webUrlPh" placeholder="https://docs.google.com/spreadsheets/d/…" />
+          </div>
+          <div class="vgrid vgrid2">
+            <div class="field">
+              <label for="sel-web-format" data-i18n="lblFormat">Format</label>
+              <select id="sel-web-format">
+                <option value="csv" selected>CSV</option>
+                <option value="xlsx">Excel (XLSX)</option>
+                <option value="md">Markdown</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btn-web-out" data-i18n="btnBatchOutDir">Çıktı klasörü…</button>
+            <button id="btn-web-run" class="primary" data-i18n="btnWebRun">İçe Aktar</button>
+            <button id="btn-web-clear" data-i18n="btnClear">Temizle</button>
+          </div>
+          <div class="outdir-row"><span class="outdir-label" data-i18n="lblOutDir">Kaydedilecek klasör:</span><span id="web-outdir">…</span></div>
+          <div id="web-outputs" class="filelist"></div>
         </section>
       </div>
       <!-- VIDEO -->
