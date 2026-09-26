@@ -88,10 +88,14 @@ pub struct MonitorDto {
 
 /// Bagli monitorleri listeler (Yakala sekmesindeki monitor secici icin).
 #[tauri::command]
-pub fn list_monitors(app: AppHandle) -> Result<Vec<MonitorDto>, String> {
+pub fn list_monitors(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Vec<MonitorDto>, String> {
+    let lang = crate::commands::lang_of(&state);
     let mons = app
         .available_monitors()
-        .map_err(|e| format!("Monitörler alınamadı: {e}"))?;
+        .map_err(|e| format!("{}: {e}", crate::i18n::msg(&lang, "monitors_fail")))?;
     Ok(mons
         .iter()
         .enumerate()
@@ -147,7 +151,7 @@ pub async fn ocr_path(
         });
     }
     if is_doc_ext(&ext) {
-        let text = extract_doc_text(&path)?;
+        let text = extract_doc_text(&path, &crate::commands::lang_of(&state))?;
         let ms = started.elapsed().as_millis() as u64;
         return Ok(DocResultDto {
             path,
@@ -160,21 +164,28 @@ pub async fn ocr_path(
         });
     }
     Err(OcrError::Image(format!(
-        "Desteklenmeyen dosya türü: .{ext} (görsel, PDF/DOCX/XLSX/PPTX/UDF/metin olmalı)"
+        "{}: .{ext}",
+        crate::i18n::msg(&crate::commands::lang_of(&state), "doc_bad_ext")
     )))
 }
 
 /// Metni `scripts/text_to_pdf.py` ile PDF'e çevirir (reportlab, Türkçe font).
-fn write_pdf_file(dest: &PathBuf, title: &str, text: &str, no_title: bool) -> Result<(), String> {
-    let script = repo_script("text_to_pdf.py")
-        .ok_or_else(|| "scripts/text_to_pdf.py bulunamadı.".to_string())?;
+fn write_pdf_file(
+    dest: &PathBuf,
+    title: &str,
+    text: &str,
+    no_title: bool,
+    lang: &str,
+) -> Result<(), String> {
+    let script = repo_script("text_to_pdf.py").ok_or_else(|| crate::i18n::msg(lang, "script_missing"))?;
     let py = python_bin();
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     let tmp = std::env::temp_dir().join(format!("mimo-pdf-{stamp}.txt"));
-    std::fs::write(&tmp, text).map_err(|e| format!("geçici yazılamadı: {e}"))?;
+    std::fs::write(&tmp, text)
+        .map_err(|e| format!("{}: {e}", crate::i18n::msg(lang, "write_fail")))?;
     let mut cmd = std::process::Command::new(&py);
     hide_console(&mut cmd);
     cmd.arg(&script)
@@ -189,12 +200,12 @@ fn write_pdf_file(dest: &PathBuf, title: &str, text: &str, no_title: bool) -> Re
     }
     let out = cmd
         .output()
-        .map_err(|e| format!("Python çalıştırılamadı ({py}): {e}"))?;
+        .map_err(|e| format!("{} ({py}): {e}", crate::i18n::msg(lang, "spawn_fail")))?;
     let _ = std::fs::remove_file(&tmp);
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
         return Err(if err.is_empty() {
-            "PDF üretilemedi (reportlab gerekli)".into()
+            crate::i18n::msg(lang, "pdf_fail")
         } else {
             err.chars().take(300).collect()
         });
@@ -203,9 +214,8 @@ fn write_pdf_file(dest: &PathBuf, title: &str, text: &str, no_title: bool) -> Re
 }
 
 /// Gecici PDF'leri `scripts/merge_pdfs.py` ile tek PDF'te birlestirir.
-fn merge_pdf_files(parts: &[PathBuf], dest: &PathBuf) -> Result<(), String> {
-    let script = repo_script("merge_pdfs.py")
-        .ok_or_else(|| "scripts/merge_pdfs.py bulunamadı.".to_string())?;
+fn merge_pdf_files(parts: &[PathBuf], dest: &PathBuf, lang: &str) -> Result<(), String> {
+    let script = repo_script("merge_pdfs.py").ok_or_else(|| crate::i18n::msg(lang, "script_missing"))?;
     let py = python_bin();
     let mut cmd = std::process::Command::new(&py);
     hide_console(&mut cmd);
@@ -215,11 +225,11 @@ fn merge_pdf_files(parts: &[PathBuf], dest: &PathBuf) -> Result<(), String> {
     }
     let out = cmd
         .output()
-        .map_err(|e| format!("Python çalıştırılamadı ({py}): {e}"))?;
+        .map_err(|e| format!("{} ({py}): {e}", crate::i18n::msg(lang, "spawn_fail")))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
         return Err(if err.is_empty() {
-            "PDF birleştirilemedi (pypdf gerekli)".into()
+            crate::i18n::msg(lang, "merge_fail")
         } else {
             err.chars().take(300).collect()
         });
@@ -229,9 +239,14 @@ fn merge_pdf_files(parts: &[PathBuf], dest: &PathBuf) -> Result<(), String> {
 
 /// `.udf` dosyasini `scripts/udf_to_pdf.py` ile yapisal PDF'e cevirir
 /// (paragraf hizalama + tablo korunur; duz-metin akisindan daha sadik).
-fn write_udf_pdf(udf_path: &str, dest: &PathBuf, title: &str, no_title: bool) -> Result<(), String> {
-    let script = repo_script("udf_to_pdf.py")
-        .ok_or_else(|| "scripts/udf_to_pdf.py bulunamadı.".to_string())?;
+fn write_udf_pdf(
+    udf_path: &str,
+    dest: &PathBuf,
+    title: &str,
+    no_title: bool,
+    lang: &str,
+) -> Result<(), String> {
+    let script = repo_script("udf_to_pdf.py").ok_or_else(|| crate::i18n::msg(lang, "script_missing"))?;
     let py = python_bin();
     let mut cmd = std::process::Command::new(&py);
     hide_console(&mut cmd);
@@ -247,11 +262,11 @@ fn write_udf_pdf(udf_path: &str, dest: &PathBuf, title: &str, no_title: bool) ->
     }
     let out = cmd
         .output()
-        .map_err(|e| format!("Python çalıştırılamadı ({py}): {e}"))?;
+        .map_err(|e| format!("{} ({py}): {e}", crate::i18n::msg(lang, "spawn_fail")))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
         return Err(if err.is_empty() {
-            "UDF→PDF üretilemedi (reportlab gerekli)".into()
+            crate::i18n::msg(lang, "udf_pdf_fail")
         } else {
             err.chars().take(300).collect()
         });
@@ -260,9 +275,9 @@ fn write_udf_pdf(udf_path: &str, dest: &PathBuf, title: &str, no_title: bool) ->
 }
 
 /// `scripts/batch_extract.py <dosya>` calistirir, stdout metni dondurur.
-fn extract_doc_text(path: &str) -> Result<String, OcrError> {
-    let script =
-        repo_script("batch_extract.py").ok_or_else(|| OcrError::Image("scripts/batch_extract.py bulunamadı".into()))?;
+fn extract_doc_text(path: &str, lang: &str) -> Result<String, OcrError> {
+    let script = repo_script("batch_extract.py")
+        .ok_or_else(|| OcrError::Image(crate::i18n::msg(lang, "script_missing")))?;
     let py = python_bin();
     let mut cmd = std::process::Command::new(&py);
     hide_console(&mut cmd);
@@ -270,11 +285,15 @@ fn extract_doc_text(path: &str) -> Result<String, OcrError> {
     // Python betigi UTF-8 yazar; konsol kodu ne olursa olsun dogru okunur.
     let out = cmd
         .output()
-        .map_err(|e| OcrError::Image(format!("Python çalıştırılamadı ({py}): {e}")))?;
+        .map_err(|e| OcrError::Image(format!("{} ({py}): {e}", crate::i18n::msg(lang, "spawn_fail"))))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
         return Err(OcrError::Image(if err.is_empty() {
-            format!("Belge çıkarılamadı (kod {})", out.status.code().unwrap_or(-1))
+            format!(
+                "{} {})",
+                crate::i18n::msg(lang, "doc_exit_code"),
+                out.status.code().unwrap_or(-1)
+            )
         } else {
             err.chars().take(400).collect()
         }));
@@ -296,11 +315,17 @@ pub async fn batch_process_files(
     file_title: Option<bool>,
 ) -> Result<BatchResultDto, String> {
     if files.is_empty() {
-        return Err("Dosya seçilmedi.".into());
+        return Err(crate::i18n::msg(
+            &crate::commands::lang_of(&state),
+            "no_files",
+        ));
     }
     let format = format.unwrap_or_else(|| "md".into()).to_ascii_lowercase();
     if !["txt", "md", "pdf"].contains(&format.as_str()) {
-        return Err("Format txt, md veya pdf olmalı.".into());
+        return Err(crate::i18n::msg(
+            &crate::commands::lang_of(&state),
+            "bad_batch_format",
+        ));
     }
     let save_mode = save_mode
         .unwrap_or_else(|| "separate".into())
@@ -308,10 +333,12 @@ pub async fn batch_process_files(
     let engine_id = active_engine_id(&state, engine);
     // PDF basligi: dosya adi yazilsin mi? (varsayilan: evet)
     let no_title = !file_title.unwrap_or(true);
+    let lang = crate::commands::lang_of(&state);
     let app_emit = app.clone();
 
     let out_dir = PathBuf::from(&out_dir);
-    std::fs::create_dir_all(&out_dir).map_err(|e| format!("Çıktı klasörü açılamadı: {e}"))?;
+    std::fs::create_dir_all(&out_dir)
+        .map_err(|e| format!("{}: {e}", crate::i18n::msg(&lang, "out_dir_fail")))?;
     let total = files.len();
     let mut items = Vec::with_capacity(total);
     // Birlesik kipte parcalar burada birikir.
@@ -321,7 +348,7 @@ pub async fn batch_process_files(
 
     let _ = app_emit.emit(
         "ocr-status",
-        serde_json::json!({"state": "working", "message": format!("toplu: {total} dosya…")}),
+        serde_json::json!({"state": "working", "message": format!("batch: {total}")}),
     );
 
     for (i, file) in files.iter().enumerate() {
@@ -346,7 +373,7 @@ pub async fn batch_process_files(
                 name,
                 kind: "missing".into(),
                 ok: false,
-                error: Some("Dosya bulunamadı.".into()),
+                error: Some(crate::i18n::msg(&lang, "file_missing")),
                 chars: 0,
             });
             continue;
@@ -365,7 +392,7 @@ pub async fn batch_process_files(
                 raw
             })
             .await
-            .map_err(|e| format!("yükleme: {e}"))?;
+            .map_err(|e| format!("load: {e}"))?;
             match raw {
                 Err(e) => Err(e),
                 Ok(png) => {
@@ -378,13 +405,17 @@ pub async fn batch_process_files(
             }
         } else if is_doc_ext(&ext) {
             let file_cloned = file.clone();
-            tauri::async_runtime::spawn_blocking(move || extract_doc_text(&file_cloned))
+            let lang2 = lang.clone();
+            tauri::async_runtime::spawn_blocking(move || extract_doc_text(&file_cloned, &lang2))
                 .await
-                .map_err(|e| format!("belge: {e}"))?
+                .map_err(|e| format!("doc: {e}"))?
                 .map(|t| ("document".to_string(), t))
                 .map_err(|e| e.to_string())
         } else {
-            Err(format!("Desteklenmeyen tür: .{ext}"))
+            Err(format!(
+                "{}: .{ext}",
+                crate::i18n::msg(&lang, "ext_unsupported")
+            ))
         };
 
             match res {
@@ -397,9 +428,9 @@ pub async fn batch_process_files(
                             std::process::id()
                         ));
                         let conv = if ext == "udf" {
-                            write_udf_pdf(file, &tmp, &name, no_title)
+                            write_udf_pdf(file, &tmp, &name, no_title, &lang)
                         } else {
-                            write_pdf_file(&tmp, &name, &text, no_title)
+                            write_pdf_file(&tmp, &name, &text, no_title, &lang)
                         };
                         match conv {
                             Ok(()) => {
@@ -437,9 +468,9 @@ pub async fn batch_process_files(
                         let dest = out_dir.join(format!("{stem}.pdf"));
                         // .udf → yapisal cevirici (hiza/tablo korunur); digerleri duz-metin PDF.
                         let conv = if ext == "udf" {
-                            write_udf_pdf(file, &dest, &name, no_title)
+                            write_udf_pdf(file, &dest, &name, no_title, &lang)
                         } else {
-                            write_pdf_file(&dest, &name, &text, no_title)
+                            write_pdf_file(&dest, &name, &text, no_title, &lang)
                         };
                         if let Err(e) = conv {
                             items.push(BatchItemResult {
@@ -469,7 +500,7 @@ pub async fn batch_process_files(
                             name,
                             kind,
                             ok: false,
-                            error: Some(format!("Yazılamadı: {e}")),
+                            error: Some(format!("{}: {e}", crate::i18n::msg(&lang, "write_fail"))),
                             chars,
                         });
                         continue;
@@ -503,9 +534,9 @@ pub async fn batch_process_files(
                 // Ara PDF'ler ayri kip kalitesinde uretildi; tek dosyada birlestir.
                 let dest = out_dir.join("mimo-batch.pdf");
                 if pdf_parts.is_empty() {
-                    return Err("Birleştirilecek PDF üretilemedi.".into());
+                    return Err(crate::i18n::msg(&lang, "combined_fail"));
                 }
-                merge_pdf_files(&pdf_parts, &dest)?;
+                merge_pdf_files(&pdf_parts, &dest, &lang)?;
                 for tmp in &pdf_parts {
                     let _ = std::fs::remove_file(tmp);
                 }
@@ -521,7 +552,7 @@ pub async fn batch_process_files(
                     }
                 }
                 if let Err(e) = std::fs::write(&dest, body) {
-                    return Err(format!("Birleşik dosya yazılamadı: {e}"));
+                    return Err(format!("{}: {e}", crate::i18n::msg(&lang, "combined_fail")));
                 }
                 combined_path = Some(dest.display().to_string());
             }
@@ -537,7 +568,7 @@ pub async fn batch_process_files(
     };
     let _ = app_emit.emit(
         "ocr-status",
-        serde_json::json!({"state": "ready", "message": format!("{}/{} tamam", dto.ok_count, dto.items.len())}),
+        serde_json::json!({"state": "ready", "ok": dto.ok_count, "total": dto.items.len()}),
     );
     Ok(dto)
 }

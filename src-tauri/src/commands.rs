@@ -15,8 +15,26 @@ pub struct AppState {
     pub options: Mutex<OcrOptions>,
     /// Secili motor kimligi: "tesseract" | "windows-ocr"
     pub active_engine: Mutex<String>,
+    /// Arayuz dili ("tr" | "en") — backend mesajlari icin.
+    pub ui_lang: Mutex<String>,
     /// Son başarılı bölge seçimi (overlay yerel mantıksal koordinatları)
     pub last_region: Mutex<Option<[f64; 4]>>,
+}
+
+/// State uzerinden arayuz dilini okur.
+pub(crate) fn lang_of(state: &State<'_, AppState>) -> String {
+    state.ui_lang.lock().unwrap().clone()
+}
+
+/// On yuz dil degisikliginde cagirir (bayraklar + baslangic).
+#[tauri::command]
+pub fn set_ui_lang(state: State<'_, AppState>, lang: String) {
+    let l = if lang.trim().to_ascii_lowercase().starts_with("tr") {
+        "tr"
+    } else {
+        "en"
+    };
+    *state.ui_lang.lock().unwrap() = l.to_string();
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +56,7 @@ fn engine_list(state: &State<'_, AppState>) -> Vec<EngineInfo> {
     let tess = state.engine.lock().unwrap().clone();
     let (tess_ok, tess_detail) = match &tess {
         Some(e) => (true, Some(e.exe_path().display().to_string())),
+        // Sabit isaret: on yuz desene gore yerellestirir (degistirmeyin).
         None => (false, Some("bulunamadı".into())),
     };
     #[cfg(windows)]
@@ -86,7 +105,11 @@ pub fn set_engine(state: State<'_, AppState>, id: String) -> Result<Vec<EngineIn
         .iter()
         .any(|e| e.id == id && e.available);
     if !ok {
-        return Err(OcrError::Image(format!("Motor kullanılamıyor: {id}")));
+        let lang = lang_of(&state);
+        return Err(OcrError::Image(format!(
+            "{}: {id}",
+            crate::i18n::msg(&lang, "engine_unavailable")
+        )));
     }
     *state.active_engine.lock().unwrap() = id;
     Ok(engine_list(&state))
@@ -116,7 +139,7 @@ pub struct EngineStatus {
     pub error: Option<String>,
 }
 
-fn engine_status_of(engine: &Option<Arc<TesseractCli>>) -> EngineStatus {
+fn engine_status_of(engine: &Option<Arc<TesseractCli>>, lang: &str) -> EngineStatus {
     match engine {
         Some(e) => EngineStatus {
             ok: true,
@@ -128,11 +151,7 @@ fn engine_status_of(engine: &Option<Arc<TesseractCli>>) -> EngineStatus {
             ok: false,
             path: None,
             tessdata: None,
-            error: Some(
-                "Tesseract bulunamadı. Kurulumla gelen tesseract-runtime eksikse \
-                 Tesseract 5 kurun ya da exe yolunu secin."
-                    .into(),
-            ),
+            error: Some(crate::i18n::msg(lang, "engine_missing")),
         },
     }
 }
@@ -140,7 +159,8 @@ fn engine_status_of(engine: &Option<Arc<TesseractCli>>) -> EngineStatus {
 /// Arayuzdeki uyari bandini besler.
 #[tauri::command]
 pub fn engine_status(state: State<'_, AppState>) -> EngineStatus {
-    engine_status_of(&state.engine.lock().unwrap())
+    let lang = lang_of(&state);
+    engine_status_of(&state.engine.lock().unwrap(), &lang)
 }
 
 /// Motoru yeniden tara (Tesseract sonradan kurulmussa yeniden baslatma gerekmez).
@@ -148,7 +168,8 @@ pub fn engine_status(state: State<'_, AppState>) -> EngineStatus {
 pub fn rescan_engine(state: State<'_, AppState>) -> EngineStatus {
     let found = TesseractCli::detect().ok().map(Arc::new);
     *state.engine.lock().unwrap() = found;
-    engine_status_of(&state.engine.lock().unwrap())
+    let lang = lang_of(&state);
+    engine_status_of(&state.engine.lock().unwrap(), &lang)
 }
 
 /// Kullanicinin sectigi tesseract.exe yolunu dogrulayip kalici kaydeder.
@@ -156,7 +177,10 @@ pub fn rescan_engine(state: State<'_, AppState>) -> EngineStatus {
 pub fn set_engine_path(state: State<'_, AppState>, path: String) -> Result<EngineStatus, OcrError> {
     let p = std::path::PathBuf::from(&path);
     if !p.is_file() {
-        return Err(OcrError::Image("Seçilen dosya bulunamadı.".into()));
+        return Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(&state),
+            "engine_not_found_file",
+        )));
     }
     // Calistigini dogrula (--version)
     let mut cmd = std::process::Command::new(&p);
@@ -165,7 +189,10 @@ pub fn set_engine_path(state: State<'_, AppState>, path: String) -> Result<Engin
     crate::video::hide_console(&mut cmd);
     let ok = cmd.output().map(|o| o.status.success()).unwrap_or(false);
     if !ok {
-        return Err(OcrError::Image("Bu dosya Tesseract olarak çalıştırılamadı.".into()));
+        return Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(&state),
+            "engine_not_runnable",
+        )));
     }
     if let Some(f) = TesseractCli::saved_path_file() {
         std::fs::write(f, path.as_bytes()).map_err(OcrError::Spawn)?;
@@ -179,18 +206,14 @@ fn engine_or_err(state: &State<'_, AppState>) -> Result<Arc<TesseractCli>, OcrEr
         .lock()
         .unwrap()
         .clone()
-        .ok_or_else(|| {
-            OcrError::Image(
-                "Tesseract bulunamadı. Tesseract 5 kurun ya da ayarladığınız yolu kontrol edin.".into(),
-            )
-        })
+        .ok_or_else(|| OcrError::Image(crate::i18n::msg(&lang_of(state), "engine_missing")))
 }
 
 fn tessdata_dir(state: &State<'_, AppState>) -> Result<std::path::PathBuf, OcrError> {
     engine_or_err(state)?
         .tessdata_dir
         .clone()
-        .ok_or_else(|| OcrError::Image("tessdata dizini çözümlenemedi".into()))
+        .ok_or_else(|| OcrError::Image(crate::i18n::msg(&lang_of(state), "tessdata_missing")))
 }
 
 #[derive(Debug, Deserialize)]
@@ -261,7 +284,7 @@ pub async fn re_capture_last(
         .last_region
         .lock()
         .unwrap()
-        .ok_or_else(|| OcrError::Image("Henüz yakalanmış bölge yok".into()))?;
+        .ok_or_else(|| OcrError::Image(crate::i18n::msg(&lang_of(&state), "no_region")))?;
     complete_capture(app, state, region[0], region[1], region[2], region[3]).await
 }
 
@@ -343,10 +366,16 @@ pub async fn ocr_preview_regions(
     regions: Vec<[f64; 4]>,
 ) -> Result<Vec<OcrDocument>, OcrError> {
     if regions.is_empty() {
-        return Err(OcrError::Image("Bölge seçilmedi".into()));
+        return Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(&state),
+            "regions_empty",
+        )));
     }
     if regions.len() > 12 {
-        return Err(OcrError::Image("En fazla 12 bölge".into()));
+        return Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(&state),
+            "max_regions",
+        )));
     }
     // Once overlay tam gizlensin (yesil kutular kareye sizmasin), tum
     // bolgeleri yakala, sonra pencereyi gosterip OCR'la.
@@ -386,10 +415,16 @@ pub async fn ocr_run(
 ) -> Result<OcrDocument, OcrError> {
     let engine_id = active_engine_id(&state, engine);
     let opts = state.options.lock().unwrap().clone();
+    let lang_c = lang_of(&state);
     let png = tauri::async_runtime::spawn_blocking(move || {
         let raw = match source {
             OcrSource::File { path } => capture::load_file(&path)?,
-            OcrSource::Clipboard => capture::load_clipboard()?,
+            OcrSource::Clipboard => capture::load_clipboard().map_err(|e| match e {
+                OcrError::NoClipboardImage => {
+                    OcrError::Image(crate::i18n::msg(&lang_c, "clipboard_no_image"))
+                }
+                other => other,
+            })?,
         };
         capture::preprocess(&raw, opts.scale)
     })
@@ -438,7 +473,10 @@ pub(crate) async fn recognize_with(
             .map_err(|e| OcrError::Image(e.to_string()))?
         }
         #[cfg(not(windows))]
-        "windows-ocr" => Err(OcrError::Image("Windows OCR yalnız Windows'ta".into())),
+        "windows-ocr" => Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(state),
+            "win_only",
+        ))),
         _ => {
             let engine = engine_or_err(state)?;
             tauri::async_runtime::spawn_blocking(move || engine.recognize(&png, &opts))
@@ -458,10 +496,48 @@ pub async fn ocr_bytes(
 ) -> Result<OcrDocument, OcrError> {
     use base64::Engine as _;
     let engine_id = active_engine_id(&state, engine);
+    let lang = lang_of(&state);
     let png = base64::engine::general_purpose::STANDARD
         .decode(image_base64.trim())
-        .map_err(|e| OcrError::Image(format!("Görsel çözülemedi: {e}")))?;
+        .map_err(|e| {
+            OcrError::Image(format!("{}: {e}", crate::i18n::msg(&lang, "image_decode")))
+        })?;
     run_ocr(&state, png, engine_id).await
+}
+
+/// Birden fazla goruntuyu ayni motorla sirayla okur (coklu yeniden OCR).
+/// Motor paylasildigi icin paralel degil sirali calisir.
+#[tauri::command]
+pub async fn ocr_bytes_batch(
+    state: State<'_, AppState>,
+    images_base64: Vec<String>,
+    engine: Option<String>,
+) -> Result<Vec<OcrDocument>, OcrError> {
+    use base64::Engine as _;
+    if images_base64.is_empty() {
+        return Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(&state),
+            "no_files",
+        )));
+    }
+    if images_base64.len() > 12 {
+        return Err(OcrError::Image(crate::i18n::msg(
+            &lang_of(&state),
+            "max_regions",
+        )));
+    }
+    let engine_id = active_engine_id(&state, engine);
+    let lang = lang_of(&state);
+    let mut docs = Vec::with_capacity(images_base64.len());
+    for b64 in &images_base64 {
+        let png = base64::engine::general_purpose::STANDARD
+            .decode(b64.trim())
+            .map_err(|e| {
+                OcrError::Image(format!("{}: {e}", crate::i18n::msg(&lang, "image_decode")))
+            })?;
+        docs.push(run_ocr(&state, png, engine_id.clone()).await?);
+    }
+    Ok(docs)
 }
 
 #[tauri::command]
@@ -476,7 +552,7 @@ pub fn copy_image(image_base64: String) -> Result<(), OcrError> {
     use base64::Engine as _;
     let png = base64::engine::general_purpose::STANDARD
         .decode(image_base64.trim())
-        .map_err(|e| OcrError::Image(format!("Görsel çözülemedi: {e}")))?;
+        .map_err(|e| OcrError::Image(format!("Görsel çözülemedi / image error: {e}")))?;
     let img = image::load_from_memory(&png).map_err(|e| OcrError::Image(e.to_string()))?;
     let rgba = img.to_rgba8();
     let (w, h) = (rgba.width() as usize, rgba.height() as usize);
@@ -487,6 +563,34 @@ pub fn copy_image(image_base64: String) -> Result<(), OcrError> {
     };
     let mut cb = arboard::Clipboard::new().map_err(|e| OcrError::Image(e.to_string()))?;
     cb.set_image(clip).map_err(|e| OcrError::Image(e.to_string()))
+}
+
+/// Panodaki resmi base64 PNG olarak dondurur (Kaynak alanina yapistirma).
+/// Panoda gorsel yoksa arayuz dilinde hata verir.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipImageDto {
+    pub image_png_base64: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[tauri::command]
+pub fn clipboard_image(state: State<'_, AppState>) -> Result<ClipImageDto, OcrError> {
+    use base64::Engine as _;
+    let png = capture::load_clipboard().map_err(|e| match e {
+        OcrError::NoClipboardImage => {
+            OcrError::Image(crate::i18n::msg(&lang_of(&state), "clipboard_no_image"))
+        }
+        other => other,
+    })?;
+    // Onizleme icin ham PNG + boyutlar; OCR yapilmaz (sadece eklenir).
+    let img = image::load_from_memory(&png).map_err(|e| OcrError::Image(e.to_string()))?;
+    Ok(ClipImageDto {
+        image_png_base64: base64::engine::general_purpose::STANDARD.encode(&png),
+        width: img.width(),
+        height: img.height(),
+    })
 }
 
 #[tauri::command]

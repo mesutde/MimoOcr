@@ -55,18 +55,18 @@
           <div class="field">
             <label for="sel-psm" data-i18n="lblPsm">Sayfa Modu (PSM)</label>
             <select id="sel-psm">
-              <option value="3" selected>Otomatik</option>
-              <option value="6">Tek blok</option>
-              <option value="7">Tek satır</option>
-              <option value="11">Seyrek metin</option>
+              <option value="3" selected data-i18n="optPsmAuto">Otomatik</option>
+              <option value="6" data-i18n="optPsmBlock">Tek blok</option>
+              <option value="7" data-i18n="optPsmLine">Tek satır</option>
+              <option value="11" data-i18n="optPsmSparse">Seyrek metin</option>
             </select>
           </div>
           <div class="field">
             <label for="sel-scale" data-i18n="lblScale">Ön İşleme</label>
             <select id="sel-scale">
-              <option value="1" selected>Yok</option>
-              <option value="2">2× Büyüt</option>
-              <option value="3">3× Büyüt</option>
+              <option value="1" selected data-i18n="optScaleNone">Yok</option>
+              <option value="2" data-i18n="optScale2">2× Büyüt</option>
+              <option value="3" data-i18n="optScale3">3× Büyüt</option>
             </select>
           </div>
           <div class="row">
@@ -255,6 +255,31 @@
         </section>
       </div>
     </main>
+    <!-- Tam ekran resim duzenleyici -->
+    <div id="editor" hidden>
+      <div id="editor-bar">
+        <span id="editor-title" data-i18n="edTitle">Düzenle</span>
+        <button data-ed="crop" data-i18n="edCrop">Kırp</button>
+        <button data-ed="rotl" title="↺">↺</button>
+        <button data-ed="rotr" title="↻">↻</button>
+        <button data-ed="fliph" data-i18n="edFlip">Yansıt</button>
+        <button data-ed="pen" data-i18n="edPen">Kalem</button>
+        <button data-ed="box" data-i18n="edBox">Kutu</button>
+        <button data-ed="border" data-i18n="edBorder">Çerçeve</button>
+        <input id="ed-color" type="color" value="#ff0000" />
+        <input id="ed-width" type="range" min="1" max="12" value="3" />
+        <label data-i18n="edBright">Parlaklık</label>
+        <input id="ed-bright" type="range" min="50" max="150" value="100" />
+        <label data-i18n="edContrast">Kontrast</label>
+        <input id="ed-contrast" type="range" min="50" max="150" value="100" />
+        <label data-i18n="edBg">Zemin</label>
+        <input id="ed-bg" type="color" value="#ffffff" />
+        <button id="ed-undo" data-i18n="edUndo">Geri Al</button>
+        <button id="ed-apply" class="primary" data-i18n="edApply">Uygula</button>
+        <button id="ed-cancel" data-i18n="edCancel">Vazgeç</button>
+      </div>
+      <div id="editor-stage"><canvas id="editor-canvas"></canvas></div>
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

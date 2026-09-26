@@ -8,7 +8,9 @@
 use std::path::PathBuf;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
+
+use crate::commands::AppState;
 
 #[cfg(windows)]
 pub(crate) fn hide_console(cmd: &mut std::process::Command) {
@@ -238,6 +240,7 @@ pub fn video_support_info() -> VideoSupportInfo {
 #[tauri::command]
 pub async fn video_extract_batch(
     app: AppHandle,
+    state: State<'_, AppState>,
     files: Vec<String>,
     out_dir: String,
     mode: Option<String>,
@@ -245,25 +248,28 @@ pub async fn video_extract_batch(
     max_frames: Option<u32>,
     formats: Option<String>,
 ) -> Result<VideoBatchDto, String> {
+    let lang = crate::commands::lang_of(&state);
     if files.is_empty() {
-        return Err("Video seçilmedi.".into());
+        return Err(crate::i18n::msg(&lang, "video_no_files"));
     }
     let mode = mode.unwrap_or_else(|| "auto".into());
     if !["auto", "fast", "slow"].contains(&mode.as_str()) {
-        return Err("Geçersiz scroll modu (auto/fast/slow).".into());
+        return Err(crate::i18n::msg(&lang, "video_bad_mode"));
     }
     let langs = langs.unwrap_or_else(|| "tur+eng".into());
     let max_frames = max_frames.unwrap_or(180).clamp(8, 400);
     let formats = formats.unwrap_or_else(|| "csv,txt".into());
 
     let handle = app.clone();
+    let lang_outer = lang.clone();
     tauri::async_runtime::spawn_blocking(
         move || -> Result<VideoBatchDto, String> {
             let out_dir = PathBuf::from(&out_dir);
-            std::fs::create_dir_all(&out_dir)
-                .map_err(|e| format!("Çıktı klasörü açılamadı: {e}"))?;
-            let script =
-                video_script_path().ok_or_else(|| "scripts/video_extract.py bulunamadı.".to_string())?;
+            std::fs::create_dir_all(&out_dir).map_err(|e| {
+                format!("{}: {e}", crate::i18n::msg(&lang, "out_dir_fail"))
+            })?;
+            let script = video_script_path()
+                .ok_or_else(|| crate::i18n::msg(&lang, "video_no_script"))?;
             let py = python_bin();
             let total = files.len();
             let mut items = Vec::with_capacity(total);
@@ -295,7 +301,7 @@ pub async fn video_extract_batch(
                         path: file.clone(),
                         name,
                         ok: false,
-                        error: Some("Dosya bulunamadı.".into()),
+                        error: Some(crate::i18n::msg(&lang, "file_missing")),
                         output_files: vec![],
                         message: String::new(),
                     });
@@ -311,7 +317,10 @@ pub async fn video_extract_batch(
                             path: file.clone(),
                             name,
                             ok: false,
-                            error: Some(format!("Desteklenmeyen uzantı: .{ext}")),
+                            error: Some(format!(
+                                "{}: .{ext}",
+                                crate::i18n::msg(&lang, "video_ext_unsupported")
+                            )),
                             output_files: vec![],
                             message: String::new(),
                         });
@@ -346,7 +355,10 @@ pub async fn video_extract_batch(
                             path: file.clone(),
                             name,
                             ok: false,
-                            error: Some(format!("Python başlatılamadı ({py}): {e}")),
+                            error: Some(format!(
+                                "{} ({py}): {e}",
+                                crate::i18n::msg(&lang, "video_spawn")
+                            )),
                             output_files: vec![],
                             message: String::new(),
                         });
@@ -391,7 +403,9 @@ pub async fn video_extract_batch(
                     }
                 }
 
-                let status = child.wait().map_err(|e| format!("Video işi beklenemedi: {e}"))?;
+                let status = child
+                    .wait()
+                    .map_err(|e| format!("{}: {e}", crate::i18n::msg(&lang, "video_wait")))?;
                 let err_out = err_task.join().unwrap_or_default();
 
                 if status.success() {
@@ -425,7 +439,11 @@ pub async fn video_extract_batch(
                     });
                 } else {
                     let detail = if err_out.is_empty() {
-                        format!("Çıkış kodu: {}", status.code().unwrap_or(-1))
+                        format!(
+                            "{}: {}",
+                            crate::i18n::msg(&lang, "video_exit_code"),
+                            status.code().unwrap_or(-1)
+                        )
                     } else {
                         err_out.chars().take(600).collect()
                     };
@@ -450,13 +468,18 @@ pub async fn video_extract_batch(
             };
             let _ = handle.emit(
                 "video-log",
-                format!("[finish] {}/{} başarılı", dto.ok_count, dto.items.len()),
+                format!(
+                    "[finish] {}/{} {}",
+                    dto.ok_count,
+                    dto.items.len(),
+                    crate::i18n::msg(&lang, "video_done_ok")
+                ),
             );
             Ok(dto)
         },
     )
     .await
-    .map_err(|e| format!("Video görevi yarıda kesildi: {e}"))?
+    .map_err(|e| format!("{}: {e}", crate::i18n::msg(&lang_outer, "video_task_cut")))?
 }
 
 #[cfg(test)]

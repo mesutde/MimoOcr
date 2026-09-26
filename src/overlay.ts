@@ -27,8 +27,42 @@ let busy = false;
 let queued: Rect[] = [];
 const boxes: HTMLDivElement[] = [];
 
-const BASE_HINT =
-  "Sürükle-bırak: tek alan · <b>Ctrl+sürükle</b>: çoklu alan · <b>Enter</b>: bitir · <b>Esc</b>: iptal";
+// Ana penceredeki dil secimiyle eslenir (localStorage).
+type OvLang = "tr" | "en";
+function ovLang(): OvLang {
+  try {
+    return localStorage.getItem("mimo-ui-lang") === "en" ? "en" : "tr";
+  } catch {
+    return "tr";
+  }
+}
+
+const OV: Record<OvLang, Record<string, string>> = {
+  tr: {
+    hint: "Sürükle-bırak: tek alan · <b>Ctrl+sürükle</b>: çoklu alan · <b>Enter</b>: bitir · <b>Esc</b>: iptal",
+    multi: "{n} alan seçildi · <b>Enter</b>: OCR · <b>Ctrl+sürükle</b>: ekle · <b>Esc</b>: iptal",
+    max: "En fazla 12 alan · <b>Enter</b>: OCR · <b>Esc</b>: iptal",
+    working: "OCR çalışıyor…",
+    workingMulti: "OCR çalışıyor… ({n} alan)",
+  },
+  en: {
+    hint: "Drag-drop: single area · <b>Ctrl+drag</b>: multi-area · <b>Enter</b>: finish · <b>Esc</b>: cancel",
+    multi: "{n} areas selected · <b>Enter</b>: OCR · <b>Ctrl+drag</b>: add · <b>Esc</b>: cancel",
+    max: "Max 12 areas · <b>Enter</b>: OCR · <b>Esc</b>: cancel",
+    working: "Working…",
+    workingMulti: "Working… ({n} areas)",
+  },
+};
+
+function ovT(key: string, params: Record<string, string | number> = {}): string {
+  let s: string = OV[ovLang()][key] ?? key;
+  for (const [k, v] of Object.entries(params)) s = s.replace(`{${k}}`, String(v));
+  return s;
+}
+
+function baseHint(): string {
+  return ovT("hint");
+}
 
 function norm(): Rect {
   const x = Math.min(startX, curX);
@@ -69,8 +103,8 @@ function paintQueued() {
   });
   hint.innerHTML =
     queued.length > 0
-      ? `${queued.length} alan seçildi · <b>Enter</b>: OCR · <b>Ctrl+sürükle</b>: ekle · <b>Esc</b>: iptal`
-      : BASE_HINT;
+      ? ovT("multi", { n: queued.length })
+      : baseHint();
 }
 
 function resetOverlay() {
@@ -79,7 +113,7 @@ function resetOverlay() {
   boxes.length = 0;
   rect.style.display = "none";
   sizeLbl.style.display = "none";
-  hint.innerHTML = BASE_HINT;
+  hint.innerHTML = baseHint();
 }
 
 window.addEventListener("mousedown", (e) => {
@@ -107,7 +141,7 @@ window.addEventListener("mouseup", async (e) => {
   // Ctrl basılıysa biriktir, overlay açık kalır
   if (e.ctrlKey || e.metaKey) {
     if (queued.length >= 12) {
-      hint.innerHTML = "En fazla 12 alan · <b>Enter</b>: OCR · <b>Esc</b>: iptal";
+      hint.innerHTML = ovT("max");
       return;
     }
     queued.push(r);
@@ -115,7 +149,7 @@ window.addEventListener("mouseup", async (e) => {
     return;
   }
   busy = true;
-  hint.innerHTML = "OCR çalışıyor…";
+  hint.innerHTML = ovT("working");
   try {
     const doc = await invoke<OcrDocument>("complete_capture", {
       x: r.x,
@@ -135,7 +169,7 @@ window.addEventListener("mouseup", async (e) => {
 async function finishQueued() {
   if (busy || queued.length === 0) return;
   busy = true;
-  hint.innerHTML = `OCR çalışıyor… (${queued.length} alan)`;
+  hint.innerHTML = ovT("workingMulti", { n: queued.length });
   try {
     const docs = await invoke<OcrDocument[]>("ocr_preview_regions", {
       regions: queued.map((r) => [r.x, r.y, r.w, r.h]),
@@ -158,4 +192,4 @@ window.addEventListener("keydown", async (e) => {
   }
 });
 
-hint.innerHTML = BASE_HINT;
+hint.innerHTML = baseHint();

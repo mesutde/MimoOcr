@@ -138,7 +138,31 @@ const I18N: Record<Lang, Record<string, string>> = {
     lblScroll: "Scroll hızı", optAuto: "Otomatik", optFast: "Hızlı scroll", optSlow: "Yavaş scroll",
     lblQuality: "Kalite / Hız", optFastQ: "Hızlı (~120 kare)", optBalanced: "Dengeli (~180 kare)",
     optAccurate: "Yüksek (~280 kare)", btnVideoRun: "Videodan Çıkar",
-    menuReOcr: "Motor ile yeniden OCR", working: "Çalışıyor…",
+    menuReOcr: "Motor ile yeniden OCR", menuCopyImg: "📋 Kopyala (resim)", menuEdit: "✏️ Düzenle",
+    menuPaste: "📋 Yapıştır", menuAll: "Tümü", menuLayer: "Katman", working: "Çalışıyor…",
+    optPsmAuto: "Otomatik", optPsmBlock: "Tek blok", optPsmLine: "Tek satır", optPsmSparse: "Seyrek metin",
+    optScaleNone: "Yok", optScale2: "2× Büyüt", optScale3: "3× Büyüt",
+    zoomTip: "Yakınlaştırma: %{p} (sıfırlamak için çift tık)",
+    engTesseract: "Tesseract (gömülü)", engWindows: "Windows OCR (sistem)", engMissing: "(yok)",
+    engLangNone: "Tesseract bulunamadı.",
+    uAreas: "alan", uMs: "ms", uWords: "kelime", uChars: "karakter", uRows: "satır", uCols: "sütun", uSec: "sn",
+    stConf: "· güven %{p}",
+    msgCopiedImg: "Resim panoya kopyalandı.", msgCopied: "Panoya kopyalandı.", msgSaved: "Kaydedildi: ",
+    msgPasted: "Panodan yapıştırıldı.",
+    msgPrevBusy: "Önceki işlem sürüyor, bitmesini bekleyin.",
+    msgViewCut: "…[görünüm kısaltıldı: {n} karakterin tamamı kopyala/kaydet ile alınabilir]",
+    msgEnterLink: "Önce geçerli bir bağlantı girin (Google Tablosu/Belgesi veya dosya).",
+    msgPickUdf: "Yalnız .udf dosyası seçin.",
+    reqPython: "Python yok", reqScript: "betik yok", reqFfmpeg: "ffmpeg yok", reqTess: "Tesseract yok",
+    reqReady: "✓ python · ffmpeg · tesseract hazır",
+    filterImage: "Görsel", filterDocs: "Belgeler", filterUdf: "UYAP UDF", filterVideo: "Video",
+    filterTess: "Tesseract", filterText: "Metin", filterMd: "Markdown", filterJson: "JSON",
+    webDone: "✓ {name} → {path}", webTable: "✓ {name} · {rows} satır × {cols} sütun → {path}",
+    msgDropSkip: "{view}: desteklenmeyen dosya ({n} atlandı)",
+    edTitle: "Düzenle", edCrop: "Kırp", edFlip: "Yansıt", edPen: "Kalem", edBox: "Kutu",
+    edBorder: "Çerçeve",
+    edBright: "Parlaklık", edContrast: "Kontrast", edBg: "Zemin",
+    edUndo: "Geri Al", edApply: "Uygula", edCancel: "Vazgeç",
   },
   en: {
     lblEngine: "Engine", tabCapture: "Capture", tabDocument: "Document", tabBatch: "Batch",
@@ -168,9 +192,39 @@ const I18N: Record<Lang, Record<string, string>> = {
     lblScroll: "Scroll speed", optAuto: "Auto", optFast: "Fast scroll", optSlow: "Slow scroll",
     lblQuality: "Quality / Speed", optFastQ: "Fast (~120 frames)", optBalanced: "Balanced (~180 frames)",
     optAccurate: "High (~280 frames)", btnVideoRun: "Extract from video",
-    menuReOcr: "Re-OCR with engine", working: "Working…",
+    menuReOcr: "Re-OCR with engine", menuCopyImg: "📋 Copy (image)", menuEdit: "✏️ Edit",
+    menuPaste: "📋 Paste", menuAll: "All", menuLayer: "Layer", working: "Working…",
+    optPsmAuto: "Auto", optPsmBlock: "Single block", optPsmLine: "Single line", optPsmSparse: "Sparse text",
+    optScaleNone: "None", optScale2: "2× Upscale", optScale3: "3× Upscale",
+    zoomTip: "Zoom: {p}% (double-click to reset)",
+    engTesseract: "Tesseract (embedded)", engWindows: "Windows OCR (system)", engMissing: "(missing)",
+    engLangNone: "Tesseract not found.",
+    uAreas: "areas", uMs: "ms", uWords: "words", uChars: "chars", uRows: "rows", uCols: "cols", uSec: "s",
+    stConf: "· {p}% conf.",
+    msgCopiedImg: "Image copied.", msgCopied: "Copied.", msgSaved: "Saved: ",
+    msgPasted: "Pasted from clipboard.",
+    msgPrevBusy: "Previous task still running.",
+    msgViewCut: "…[view truncated: full {n} chars available via copy/save]",
+    msgEnterLink: "Enter a valid link first (Google Sheet/Doc or file).",
+    msgPickUdf: "Please pick a .udf file.",
+    reqPython: "no Python", reqScript: "no script", reqFfmpeg: "no ffmpeg", reqTess: "no Tesseract",
+    reqReady: "✓ python · ffmpeg · tesseract ready",
+    filterImage: "Images", filterDocs: "Documents", filterUdf: "UYAP UDF", filterVideo: "Video",
+    filterTess: "Tesseract", filterText: "Text", filterMd: "Markdown", filterJson: "JSON",
+    webDone: "✓ {name} → {path}", webTable: "✓ {name} · {rows} rows × {cols} cols → {path}",
+    msgDropSkip: "{view}: unsupported file ({n} skipped)",
+    edTitle: "Edit", edCrop: "Crop", edFlip: "Flip", edPen: "Pen", edBox: "Box",
+    edBorder: "Border",
+    edBright: "Brightness", edContrast: "Contrast", edBg: "Background",
+    edUndo: "Undo", edApply: "Apply", edCancel: "Cancel",
   },
 };
+
+function tFmt(key: string, params: Record<string, string | number>): string {
+  let s: string = I18N[uiLang][key] ?? key;
+  for (const [k, v] of Object.entries(params)) s = s.replace(`{${k}}`, String(v));
+  return s;
+}
 
 function t(key: string): string {
   return I18N[uiLang][key] ?? key;
@@ -190,8 +244,25 @@ function applyI18n() {
   document.documentElement.lang = uiLang;
 }
 
-$("btn-lang-tr").addEventListener("click", () => { uiLang = "tr"; applyI18n(); refreshOcrLangs(); });
-$("btn-lang-en").addEventListener("click", () => { uiLang = "en"; applyI18n(); refreshOcrLangs(); });
+$("btn-lang-tr").addEventListener("click", () => { setUiLang("tr"); });
+$("btn-lang-en").addEventListener("click", () => { setUiLang("en"); });
+
+async function setUiLang(l: Lang) {
+  uiLang = l;
+  persistUiLang();
+  applyI18n();
+  try {
+    await invoke("set_ui_lang", { lang: l });
+  } catch { /* varsayılan tr kalır */ }
+  refreshOcrLangs();
+  refreshEngines();
+}
+
+function persistUiLang() {
+  try {
+    localStorage.setItem("mimo-ui-lang", uiLang);
+  } catch { /* yoksay */ }
+}
 
 // Tema
 $("btn-theme").addEventListener("click", () => {
@@ -228,8 +299,24 @@ const engineWarnText = $("engine-warn-text");
 let engines: EngineInfo[] = [];
 let lastImageBase64 = "";
 
+function engineName(e: EngineInfo): string {
+  if (e.id === "tesseract") return t("engTesseract");
+  if (e.id === "windows-ocr") return t("engWindows");
+  return e.name;
+}
+
+function engineDetail(e: EngineInfo): string {
+  const d = e.detail ?? "";
+  if (!d || d === "bulunamadı") return "";
+  if (d === "dil paketi yok") return uiLang === "tr" ? "dil paketi yok" : "no language pack";
+  if (d.startsWith("dil: ")) return (uiLang === "tr" ? "dil: " : "langs: ") + d.slice(5);
+  return d;
+}
+
 function engineLabel(e: EngineInfo): string {
-  return e.available ? e.name : `${e.name} (yok)`;
+  const base = engineName(e) + (e.available ? "" : " " + t("engMissing"));
+  const det = engineDetail(e);
+  return det ? `${base} — ${det}` : base;
 }
 
 async function refreshEngines() {
@@ -301,7 +388,7 @@ selEngine.addEventListener("change", async () => {
 
 function renderEngineStatus(st: EngineStatus) {
   (engineWarn as HTMLElement).hidden = st.ok;
-  if (!st.ok) engineWarnText.textContent = st.error ?? "Tesseract bulunamadı.";
+  if (!st.ok) engineWarnText.textContent = st.error ?? t("engLangNone");
 }
 
 async function refreshEngineStatus() {
@@ -319,7 +406,7 @@ $<HTMLButtonElement>("btn-engine-rescan").addEventListener("click", async () => 
 });
 
 $<HTMLButtonElement>("btn-engine-path").addEventListener("click", async () => {
-  const sel = await open({ multiple: false, filters: [{ name: "Tesseract", extensions: ["exe"] }] });
+  const sel = await open({ multiple: false, filters: [{ name: t("filterTess"), extensions: ["exe"] }] });
   if (typeof sel === "string") {
     try {
       renderEngineStatus(await invoke<EngineStatus>("set_engine_path", { path: sel }));
@@ -331,109 +418,411 @@ $<HTMLButtonElement>("btn-engine-path").addEventListener("click", async () => {
   }
 });
 
-// Kaynak önizlemede fare tekerleğiyle yakınlaştırma (çift tık sıfırlar).
+// ---------------------------------------------------------------------------
+// Kaynak katmanları: tikla-sec, surukle-tasi, koseden boyutlandir.
+// ---------------------------------------------------------------------------
+
+interface SrcLayer {
+  id: number;
+  b64: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  nw: number;
+  nh: number;
+  el?: HTMLDivElement;
+}
+
+let srcLayers: SrcLayer[] = [];
+let selectedLayer = -1;
+let layerSeq = 0;
+const LAYER_GAP = 8;
+
+function stageEl(): HTMLElement {
+  let st = $("img-stage") as HTMLElement | null;
+  if (!st) {
+    imgWrap.innerHTML = "";
+    st = document.createElement("div");
+    st.id = "img-stage";
+    imgWrap.appendChild(st);
+  }
+  return st;
+}
+
+function clearStage() {
+  srcLayers = [];
+  selectedLayer = -1;
+  imgWrap.classList.remove("has-img");
+  imgWrap.innerHTML = `<span id="img-empty">${t("imgEmpty")}</span>`;
+  lastImageBase64 = "";
+}
+
+// İlk dizilim: 2 sutunlu izgara (kolaj gorunumu), en-boy korunur.
+function layoutLayers() {
+  const cols = 2;
+  const cellW = 560;
+  srcLayers.forEach((L) => {
+    const s = Math.min(1, cellW / L.nw);
+    L.w = Math.max(32, Math.round(L.nw * s));
+    L.h = Math.max(32, Math.round(L.nh * s));
+  });
+  const rows = Math.ceil(srcLayers.length / cols);
+  const colW = [0, 0];
+  const rowH: number[] = [];
+  for (let r = 0; r < rows; r++) {
+    let h = 0;
+    for (let c = 0; c < cols; c++) {
+      const L = srcLayers[r * cols + c];
+      if (!L) continue;
+      h = Math.max(h, L.h);
+      colW[c] = Math.max(colW[c], L.w);
+    }
+    rowH.push(h);
+  }
+  let y = 0;
+  for (let r = 0; r < rows; r++) {
+    let x = 0;
+    for (let c = 0; c < cols; c++) {
+      const L = srcLayers[r * cols + c];
+      if (L) {
+        L.x = x + Math.round((colW[c] - L.w) / 2);
+        L.y = y + Math.round((rowH[r] - L.h) / 2);
+      }
+      x += colW[c] + LAYER_GAP;
+    }
+    y += rowH[r] + LAYER_GAP;
+  }
+}
+
+function renderLayers() {
+  const st = stageEl();
+  st.innerHTML = "";
+  const z = previewZoom;
+  let maxX = 0;
+  let maxY = 0;
+  srcLayers.forEach((L, i) => {
+    const d = document.createElement("div");
+    d.className = "layer" + (i === selectedLayer ? " sel" : "");
+    d.style.left = Math.round(L.x * z) + "px";
+    d.style.top = Math.round(L.y * z) + "px";
+    d.style.width = Math.round(L.w * z) + "px";
+    d.style.height = Math.round(L.h * z) + "px";
+    const img = document.createElement("img");
+    img.src = "data:image/png;base64," + L.b64;
+    img.draggable = false;
+    d.appendChild(img);
+    const num = document.createElement("span");
+    num.className = "layer-num";
+    num.textContent = String(i + 1);
+    d.appendChild(num);
+    if (i === selectedLayer) {
+      (["nw", "ne", "sw", "se"] as const).forEach((pos) => {
+        const h = document.createElement("span");
+        h.className = "handle " + pos;
+        h.dataset.handle = pos;
+        d.appendChild(h);
+      });
+    }
+    d.addEventListener("mousedown", (e) => onLayerDown(e, i));
+    d.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectLayer(i);
+      openEngineMenu(e.clientX, e.clientY, i);
+    });
+    st.appendChild(d);
+    maxX = Math.max(maxX, (L.x + L.w) * z);
+    maxY = Math.max(maxY, (L.y + L.h) * z);
+  });
+  st.style.width = Math.max(1, Math.round(maxX)) + "px";
+  st.style.height = Math.max(1, Math.round(maxY)) + "px";
+  st.title = zoomLabel();
+  imgWrap.classList.toggle("has-img", srcLayers.length > 0);
+  lastImageBase64 = srcLayers.length ? srcLayers[Math.max(0, selectedLayer)].b64 : "";
+}
+
+function selectLayer(i: number) {
+  selectedLayer = i;
+  renderLayers();
+}
+
+// Sürükle-tasi + koseden boyutlandir.
+let dragMode: null | { kind: "move" | "size"; idx: number; el: HTMLDivElement; sx: number; sy: number; ox: number; oy: number; ow: number; oh: number; corner: string } = null;
+
+function onLayerDown(e: MouseEvent, i: number) {
+  if (e.button !== 0) return;
+  selectLayer(i);
+  const L = srcLayers[i];
+  if (!L) return;
+  const h = (e.target as HTMLElement).dataset.handle;
+  // Secim sahneyi yeniden kurdu; suruklenecek guncel kutuyu sahneden al.
+  const el = stageEl().children[i] as HTMLDivElement | undefined;
+  if (!el) return;
+  // Isaretci yakalama: imlec pencere disina ciksa bile mouseup/move gelsin.
+  try {
+    el.setPointerCapture((e as PointerEvent).pointerId);
+  } catch { /* desteksiz tarayici */ }
+  dragMode = {
+    kind: h ? "size" : "move",
+    idx: i,
+    el,
+    sx: e.clientX, sy: e.clientY,
+    ox: L.x, oy: L.y, ow: L.w, oh: L.h,
+    corner: h ?? "",
+  };
+  e.preventDefault();
+}
+
+function paintDragged() {
+  // Tumu compositor'da: kutu koken konum/boyutta durur, fark transform ile
+  // uygulanir (layout yok, titreme yok). Model gunceldir; birakinca tek render.
+  const d = dragMode;
+  if (!d) return;
+  const L = srcLayers[d.idx];
+  if (!L || !d.el.isConnected) return;
+  const z = previewZoom;
+  d.el.style.left = Math.round(d.ox * z) + "px";
+  d.el.style.top = Math.round(d.oy * z) + "px";
+  d.el.style.width = Math.max(1, Math.round(d.ow * z)) + "px";
+  d.el.style.height = Math.max(1, Math.round(d.oh * z)) + "px";
+  const dx = (L.x - d.ox) * z;
+  const dy = (L.y - d.oy) * z;
+  const sx = d.ow > 0 ? L.w / d.ow : 1;
+  const sy = d.oh > 0 ? L.h / d.oh : 1;
+  // Sabit kose capalanir (tasi: sol ust).
+  const origin = d.kind === "move"
+    ? "0 0"
+    : d.corner.includes("n")
+      ? d.corner.includes("w") ? "100% 100%" : "0 100%"
+      : d.corner.includes("w") ? "100% 0" : "0 0";
+  d.el.style.transformOrigin = origin;
+  d.el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+}
+
+document.addEventListener("mousemove", (e) => {
+  if (!dragMode) return;
+  const d = dragMode;
+  const L = srcLayers[d.idx];
+  if (!L) { dragMode = null; return; }
+  const dx = (e.clientX - d.sx) / previewZoom;
+  const dy = (e.clientY - d.sy) / previewZoom;
+  if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 3) suppressStageClick = true;
+  if (d.kind === "move") {
+    L.x = Math.round(d.ox + dx);
+    L.y = Math.round(d.oy + dy);
+    // Tamamen sahne disina kaybolmasin: en az 48px tutamak payi kalir.
+    // (Sinirda durmaz, otesine tasinir ama tutamak erisilir kalir.)
+    L.x = Math.max(48 - L.w, L.x);
+    L.y = Math.max(48 - L.h, L.y);
+  } else {
+    const fx = (d.ow + (d.corner.includes("w") ? -dx : dx)) / d.ow;
+    const fy = (d.oh + (d.corner.includes("n") ? -dy : dy)) / d.oh;
+    const f = Math.abs(dx) >= Math.abs(dy) ? fx : fy;
+    const nw = Math.max(32, Math.round(d.ow * f));
+    const nh = Math.max(32, Math.round(d.oh * f));
+    if (d.corner.includes("n")) L.y = Math.round(d.oy + (d.oh - nh));
+    if (d.corner.includes("w")) L.x = Math.round(d.ox + (d.ow - nw));
+    L.w = nw;
+    L.h = nh;
+    L.x = Math.max(48 - L.w, L.x);
+    L.y = Math.max(48 - L.h, L.y);
+  }
+  paintDragged();
+});
+
+function endDrag() {
+  if (dragMode) {
+    renderLayers();
+  }
+  dragMode = null;
+}
+
+document.addEventListener("mouseup", endDrag);
+// Isaretci calinirsa/iptal olursa da ayni kapanis (yari yolda takilma yok).
+document.addEventListener("pointercancel", endDrag);
+
+// Kaynak onizlemede fare tekerlegiyle yakinlastirma (cift tik sifirlar).
+// Yakilastirma renderLayers icinde uygulanir (katman geometrisi korunur).
 let previewZoom = 1;
 
 function zoomLabel(): string {
-  return uiLang === "tr"
-    ? `Yakınlaştırma: %${Math.round(previewZoom * 100)} (sıfırlamak için çift tık)`
-    : `Zoom: ${Math.round(previewZoom * 100)}% (double-click to reset)`;
+  return tFmt("zoomTip", { p: Math.round(previewZoom * 100) });
 }
 
-function applyZoom(img: HTMLImageElement) {
-  if (previewZoom === 1) {
-    img.style.width = "";
-    img.style.maxWidth = "";
-    img.style.maxHeight = "";
-  } else {
-    img.style.maxWidth = "none";
-    img.style.maxHeight = "none";
-    img.style.width = `${previewZoom * 100}%`;
-  }
-  img.title = zoomLabel();
-}
-
-function resetZoom(img: HTMLImageElement) {
+function resetZoom() {
   previewZoom = 1;
-  applyZoom(img);
+  if (srcLayers.length) renderLayers();
 }
 
 function previewImg(): HTMLImageElement | null {
-  return ($("img-wrap") as HTMLElement).querySelector("img");
+  return ($("img-wrap") as HTMLElement).querySelector("#img-stage img");
 }
 
 function bindPreviewZoom() {
   const box = $("img-wrap") as HTMLElement;
   box.addEventListener("wheel", (e) => {
-    const img = previewImg();
-    if (!img) return;
+    if (!srcLayers.length) return;
     e.preventDefault();
     const step = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     previewZoom = Math.max(0.2, Math.min(8, previewZoom * step));
-    applyZoom(img);
+    renderLayers();
   }, { passive: false });
 
   box.addEventListener("dblclick", () => {
-    const img = previewImg();
-    if (img) resetZoom(img);
+    previewZoom = 1;
+    renderLayers();
   });
 }
 
-// Sağ-tık motor menüsü (önizleme)
+// Sağ-tık motor menüsü (önizleme): katman üstünde tek katman + Tümü,
+// boş alanda (katman varsa) Tümü.
 const engineMenu = $("engine-menu");
 const imgWrap = $("img-wrap");
 bindPreviewZoom();
 
-imgWrap.addEventListener("contextmenu", (e) => {
-  e.preventDefault();
-  if (!lastImageBase64) return;
-  engineMenu.innerHTML = "";
+async function reOcrLayers(idxs: number[], engineId: string) {
+  engineMenu.hidden = true;
+  const b64s = idxs.map((i) => srcLayers[i]?.b64).filter((s): s is string => !!s);
+  if (!b64s.length) return;
+  if (busy) { setStatus(t("msgPrevBusy"), "err"); return; }
+  setBusy(true);
+  try {
+    const docs = await invoke<OcrDocument[]>("ocr_bytes_batch", {
+      imagesBase64: b64s,
+      engine: engineId,
+    });
+    if (!docs.length) return;
+    txtResult.value = combineText(docs);
+    const totalWords = docs.reduce((a, d) => a + d.words.length, 0);
+    const totalMs = docs.reduce((a, d) => a + d.elapsed_ms, 0);
+    setStatus(`${docs[0].engine} · ${totalMs} ${t("uMs")} · ${totalWords} ${t("uWords")}`, "ok");
+  } catch (err) {
+    setStatus(String(err), "err");
+  } finally {
+    setBusy(false);
+  }
+}
+
+function addEngineItems(targetIdx: number | "all") {
+  const idxs = targetIdx === "all"
+    ? srcLayers.map((_, i) => i)
+    : [targetIdx];
   const title = document.createElement("div");
   title.className = "menu-title";
-  title.textContent = t("menuReOcr");
+  title.textContent = t("menuReOcr")
+    + (targetIdx === "all" ? ` • ${t("menuAll")}` : ` • ${t("menuLayer")} ${targetIdx + 1}`);
   engineMenu.appendChild(title);
   for (const en of engines) {
     if (!en.available) continue;
     const b = document.createElement("button");
-    b.textContent = en.name;
-    b.addEventListener("click", async () => {
-      engineMenu.hidden = true;
-      setBusy(true);
-      try {
-        const doc = await invoke<OcrDocument>("ocr_bytes", {
-          imageBase64: lastImageBase64,
-          engine: en.id,
-        });
-        showResult(doc);
-      } catch (err) {
-        setStatus(String(err), "err");
-      } finally {
-        setBusy(false);
-      }
-    });
+    b.textContent = engineName(en);
+    b.addEventListener("click", () => reOcrLayers(idxs, en.id));
     engineMenu.appendChild(b);
   }
-  const sep = document.createElement("div");
-  sep.className = "menu-sep";
-  engineMenu.appendChild(sep);
-  const cp = document.createElement("button");
-  cp.textContent = uiLang === "tr" ? "📋 Kopyala (resim)" : "📋 Copy (image)";
-  cp.addEventListener("click", async () => {
+}
+
+interface ClipImage {
+  imagePngBase64: string;
+  width: number;
+  height: number;
+}
+
+// Panodaki resmi kaynak katmani olarak ekler (dogal boyut; buyukse kuculur).
+async function pasteFromClipboard() {
+  try {
+    const r = await invoke<ClipImage>("clipboard_image");
+    addSourceLayer(r.imagePngBase64, r.width, r.height);
+    setStatus(t("msgPasted"), "ok");
+  } catch (e) {
+    setStatus(String(e), "err");
+  }
+}
+
+function addSourceLayer(b64: string, nw: number, nh: number) {
+  const s = Math.min(1, 1100 / Math.max(1, Math.max(nw, nh)));
+  const w = Math.max(32, Math.round(nw * s));
+  const h = Math.max(32, Math.round(nh * s));
+  const off = (srcLayers.length % 6) * 24;
+  srcLayers.push({ id: layerSeq++, b64, x: off, y: off, w, h, nw, nh });
+  selectedLayer = srcLayers.length - 1;
+  renderLayers();
+}
+
+function openEngineMenu(x: number, y: number, idx: number | "all") {
+  engineMenu.innerHTML = "";
+  if (srcLayers.length) addEngineItems(idx);
+  if (idx !== "all") {
+    const cp = document.createElement("button");
+    cp.textContent = t("menuCopyImg");
+    cp.addEventListener("click", async () => {
+      engineMenu.hidden = true;
+      try {
+        await invoke("copy_image", { imageBase64: srcLayers[idx].b64 });
+        setStatus(t("msgCopiedImg"), "ok");
+      } catch (err) {
+        setStatus(String(err), "err");
+      }
+    });
+    engineMenu.appendChild(cp);
+    const ed = document.createElement("button");
+    ed.textContent = t("menuEdit");
+    ed.addEventListener("click", () => {
+      engineMenu.hidden = true;
+      openEditor(idx);
+    });
+    engineMenu.appendChild(ed);
+  } else {
+    const sep = document.createElement("div");
+    sep.className = "menu-sep";
+    engineMenu.appendChild(sep);
+  }
+  const ps = document.createElement("button");
+  ps.textContent = t("menuPaste");
+  ps.addEventListener("click", async () => {
     engineMenu.hidden = true;
-    try {
-      await invoke("copy_image", { imageBase64: lastImageBase64 });
-      setStatus(uiLang === "tr" ? "Resim panoya kopyalandı." : "Image copied.", "ok");
-    } catch (err) {
-      setStatus(String(err), "err");
-    }
+    await pasteFromClipboard();
   });
-  engineMenu.appendChild(cp);
+  engineMenu.appendChild(ps);
   // İmleçte aç (ekran taşması korumalı)
-  const w = 240;
-  const h = Math.min(320, 60 + engineMenu.childElementCount * 36);
-  engineMenu.style.left = `${Math.max(4, Math.min(e.clientX, window.innerWidth - w))}px`;
-  engineMenu.style.top = `${Math.max(4, Math.min(e.clientY, window.innerHeight - h))}px`;
+  const w = 250;
+  const h = Math.min(420, 60 + engineMenu.childElementCount * 36);
+  engineMenu.style.left = `${Math.max(4, Math.min(x, window.innerWidth - w))}px`;
+  engineMenu.style.top = `${Math.max(4, Math.min(y, window.innerHeight - h))}px`;
   engineMenu.hidden = false;
+}
+
+imgWrap.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  openEngineMenu(e.clientX, e.clientY, "all");
+});
+
+// Ctrl+V: kaynak gorunumunde panodaki resmi katman olarak ekle.
+document.addEventListener("keydown", (e) => {
+  const tag = (e.target as HTMLElement)?.tagName ?? "";
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+    if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+    if (currentView() !== "yakala") return;
+    e.preventDefault();
+    pasteFromClipboard();
+  }
+});
+
+// Bos alana tiklama: secimi birak (numaralar da gizlenir).
+// Surukleme sonrasi gelen tiklama yoksayilir.
+let suppressStageClick = false;
+imgWrap.addEventListener("click", (e) => {
+  if (suppressStageClick) {
+    suppressStageClick = false;
+    return;
+  }
+  const el = e.target as HTMLElement;
+  if (el === imgWrap || el.id === "img-stage" || el.id === "img-empty") {
+    if (selectedLayer !== -1) {
+      selectedLayer = -1;
+      renderLayers();
+    }
+  }
 });
 document.addEventListener("click", () => { engineMenu.hidden = true; });
 
@@ -471,39 +860,71 @@ function confSuffix(doc: OcrDocument): string {
   if (doc.words.length === 0) return "";
   const scored = doc.words.filter((w) => w.confidence > 0);
   const conf = scored.length > 0
-    ? ` · güven %${(scored.reduce((a, w) => a + w.confidence, 0) / scored.length).toFixed(0)}`
+    ? " " + tFmt("stConf", { p: (scored.reduce((a, w) => a + w.confidence, 0) / scored.length).toFixed(0) })
     : "";
-  return ` · ${doc.words.length} kelime${conf}`;
+  return ` · ${doc.words.length} ${t("uWords")}${conf}`;
 }
 
 function showResult(doc: OcrDocument) {
   txtResult.value = doc.plain_text;
-  lastImageBase64 = doc.image_png_base64;
-  const img = document.createElement("img");
-  img.src = "data:image/png;base64," + doc.image_png_base64;
-  imgWrap.innerHTML = "";
-  imgWrap.appendChild(img);
-  imgWrap.classList.add("has-img");
-  resetZoom(img);
-  setStatus(`${doc.engine} · ${doc.language} · ${doc.elapsed_ms} ms${confSuffix(doc)}`, "ok");
+  setLayersFromDocs([doc]);
+  setStatus(`${doc.engine} · ${doc.language} · ${doc.elapsed_ms} ${t("uMs")}${confSuffix(doc)}`, "ok");
+}
+
+function combineText(docs: OcrDocument[]): string {
+  return docs.map((d, i) => `===== ${i + 1} =====\n${d.plain_text}`).join("\n\n");
 }
 
 function showResults(docs: OcrDocument[]) {
   if (docs.length === 0) return;
   if (docs.length === 1) { showResult(docs[0]); return; }
-  txtResult.value = docs
-    .map((d, i) => `===== ${i + 1} =====\n${d.plain_text}`)
-    .join("\n\n");
-  lastImageBase64 = docs[0].image_png_base64;
-  const img = document.createElement("img");
-  img.src = "data:image/png;base64," + docs[0].image_png_base64;
-  imgWrap.innerHTML = "";
-  imgWrap.appendChild(img);
-  imgWrap.classList.add("has-img");
-  resetZoom(img);
+  txtResult.value = combineText(docs);
+  setLayersFromDocs(docs);
   const totalWords = docs.reduce((a, d) => a + d.words.length, 0);
   const totalMs = docs.reduce((a, d) => a + d.elapsed_ms, 0);
-  setStatus(`${docs.length} alan · ${totalMs} ms · ${totalWords} kelime`, "ok");
+  setStatus(`${docs.length} ${t("uAreas")} · ${totalMs} ${t("uMs")} · ${totalWords} ${t("uWords")}`, "ok");
+}
+
+// Belgelerden katman listesi kurar (2 sutun izgara, en-boy korunur).
+function setLayersFromDocs(docs: OcrDocument[]) {
+  srcLayers = [];
+  selectedLayer = docs.length > 1 ? -1 : 0;
+  previewZoom = 1;
+  const loaders = docs.map((d) => d.image_png_base64).filter(Boolean);
+  if (!loaders.length) {
+    renderLayers();
+    return;
+  }
+  Promise.all(loaders.map(loadImg)).then((imgs) => {
+    srcLayers = imgs.map((im, i) => ({
+      id: layerSeq++,
+      b64: docs[i].image_png_base64,
+      x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight,
+      nw: im.naturalWidth, nh: im.naturalHeight,
+    }));
+    // Asiri buyuk tek resimleri sahneye sigdir (orijinal b64 korunur).
+    const maxStage = 1100;
+    srcLayers.forEach((L) => {
+      const s = Math.min(1, maxStage / Math.max(L.nw, L.nh));
+      L.w = Math.max(32, Math.round(L.nw * s));
+      L.h = Math.max(32, Math.round(L.nh * s));
+    });
+    layoutLayers();
+    if (srcLayers.length === 1) selectedLayer = 0;
+    renderLayers();
+  }).catch(() => {
+    // Yedek: ilk belge klasik gosterim
+    if (docs.length) showResult(docs[0]);
+  });
+}
+
+function loadImg(b64: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = "data:image/png;base64," + b64;
+  });
 }
 
 async function runOcr(args: Record<string, unknown>) {
@@ -519,7 +940,10 @@ async function runOcr(args: Record<string, unknown>) {
   }
 }
 
-btnCapture.addEventListener("click", () => invoke("begin_capture"));
+btnCapture.addEventListener("click", () => {
+  if (busy) { setStatus(t("msgPrevBusy"), "err"); return; }
+  invoke("begin_capture");
+});
 
 btnFull.addEventListener("click", async () => {
   if (busy) return;
@@ -536,12 +960,14 @@ btnFull.addEventListener("click", async () => {
   }
 });
 
-const IMG_FILTER = {
-  filters: [{ name: "Görsel", extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp", "gif"] }],
-};
+function imgFilter() {
+  return {
+    filters: [{ name: t("filterImage"), extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp", "gif"] }],
+  };
+}
 
 btnOpen.addEventListener("click", async () => {
-  const path = await open({ multiple: false, ...IMG_FILTER });
+  const path = await open({ multiple: false, ...imgFilter() });
   if (typeof path === "string") await runOcr({ source: { kind: "file", path } });
 });
 
@@ -550,21 +976,21 @@ btnPaste.addEventListener("click", () => runOcr({ source: { kind: "clipboard" } 
 btnCopy.addEventListener("click", async () => {
   if (!txtResult.value) return;
   await invoke("copy_text", { text: txtResult.value });
-  setStatus(uiLang === "tr" ? "Panoya kopyalandı." : "Copied.", "ok");
+  setStatus(t("msgCopied"), "ok");
 });
 
 btnSave.addEventListener("click", async () => {
   if (!txtResult.value) return;
   const path = await save({
     filters: [
-      { name: "Metin", extensions: ["txt"] },
-      { name: "Markdown", extensions: ["md"] },
-      { name: "JSON", extensions: ["json"] },
+      { name: t("filterText"), extensions: ["txt"] },
+      { name: t("filterMd"), extensions: ["md"] },
+      { name: t("filterJson"), extensions: ["json"] },
     ],
   });
   if (path) {
     await invoke("save_text", { path, text: txtResult.value });
-    setStatus((uiLang === "tr" ? "Kaydedildi: " : "Saved: ") + path, "ok");
+    setStatus(t("msgSaved") + path, "ok");
   }
 });
 
@@ -603,7 +1029,11 @@ listen<OcrDocument[]>("ocr-results", (ev) => showResults(ev.payload));
 listen<string>("ocr-error", (ev) => setStatus(ev.payload, "err"));
 listen<Record<string, unknown>>("ocr-status", (ev) => {
   const s = ev.payload;
-  setStatus(String(s["message"] ?? s["state"] ?? ""), s["state"] === "ready" ? "ok" : "");
+  if (typeof s["ok"] === "number" && typeof s["total"] === "number") {
+    setStatus(`${s["ok"]}/${s["total"]}`, s["state"] === "ready" ? "ok" : "");
+  } else {
+    setStatus(String(s["message"] ?? s["state"] ?? ""), s["state"] === "ready" ? "ok" : "");
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -621,10 +1051,7 @@ const DOC_VIEW_LIMIT = 300_000;
 function setDocResult(full: string) {
   docFullText = full;
   if (full.length > DOC_VIEW_LIMIT) {
-    docResult.value = full.slice(0, DOC_VIEW_LIMIT)
-      + (uiLang === "tr"
-        ? `\n\n…[görünüm kısaltıldı: ${full.length} karakterin tamamı kopyala/kaydet ile alınabilir]`
-        : `\n\n…[view truncated: full ${full.length} chars available via copy/save]`);
+    docResult.value = full.slice(0, DOC_VIEW_LIMIT) + "\n\n" + tFmt("msgViewCut", { n: full.length });
   } else {
     docResult.value = full;
   }
@@ -642,16 +1069,18 @@ function setDocStatus(msg: string, cls: "" | "ok" | "err" = "") {
   docStatus.className = "status " + cls;
 }
 
-const DOC_FILTER = {
-  filters: [{
-    name: "Belgeler",
-    extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp",
-      "pdf", "docx", "xlsx", "pptx", "udf", "txt", "md"],
-  }],
-};
+function docFilter() {
+  return {
+    filters: [{
+      name: t("filterDocs"),
+      extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp",
+        "pdf", "docx", "xlsx", "pptx", "udf", "txt", "md"],
+    }],
+  };
+}
 
 $<HTMLButtonElement>("btn-doc-browse").addEventListener("click", async () => {
-  const sel = await open({ multiple: false, ...DOC_FILTER });
+  const sel = await open({ multiple: false, ...docFilter() });
   if (typeof sel === "string") {
     docPath.value = sel;
     setDocStatus("");
@@ -666,9 +1095,9 @@ $<HTMLButtonElement>("btn-doc-run").addEventListener("click", async () => {
     const r = await invoke<DocResult>("ocr_path", { path: docPath.value });
     setDocResult(r.plainText);
     const extra = r.kind === "image" && r.words.length
-      ? ` · ${r.words.length} kelime`
-      : ` · ${r.plainText.length} karakter`;
-    setDocStatus(`${r.engine} · ${r.elapsedMs} ms${extra}`, "ok");
+      ? ` · ${r.words.length} ${t("uWords")}`
+      : ` · ${r.plainText.length} ${t("uChars")}`;
+    setDocStatus(`${r.engine} · ${r.elapsedMs} ${t("uMs")}${extra}`, "ok");
   } catch (e) {
     setDocStatus(String(e), "err");
   } finally {
@@ -687,8 +1116,8 @@ $<HTMLButtonElement>("btn-doc-save").addEventListener("click", async () => {
   if (!docFullText) return;
   const path = await save({
     filters: [
-      { name: "Metin", extensions: ["txt"] },
-      { name: "Markdown", extensions: ["md"] },
+      { name: t("filterText"), extensions: ["txt"] },
+      { name: t("filterMd"), extensions: ["md"] },
     ],
   });
   if (path) {
@@ -747,7 +1176,7 @@ udfFilesEl.addEventListener("click", (e) => {
 $<HTMLButtonElement>("btn-udf-add").addEventListener("click", async () => {
   const sel = await open({
     multiple: true,
-    filters: [{ name: "UYAP UDF", extensions: ["udf"] }],
+    filters: [{ name: t("filterUdf"), extensions: ["udf"] }],
   });
   const add = (s: string) => {
     if (!s.toLowerCase().endsWith(".udf") || udfPaths.includes(s)) return;
@@ -868,7 +1297,7 @@ batchFilesEl.addEventListener("click", (e) => {
 });
 
 $<HTMLButtonElement>("btn-batch-add").addEventListener("click", async () => {
-  const sel = await open({ multiple: true, ...DOC_FILTER });
+  const sel = await open({ multiple: true, ...docFilter() });
   if (Array.isArray(sel)) batchPaths.push(...sel.filter((s) => !batchPaths.includes(s)));
   else if (typeof sel === "string" && !batchPaths.includes(sel)) batchPaths.push(sel);
   renderBatchFiles();
@@ -1060,7 +1489,7 @@ $<HTMLButtonElement>("btn-web-run").addEventListener("click", async () => {
       const r = await invoke<SheetResult>("import_doc_url", {
         url, outDir: webOutDir, format: fmt,
       });
-      setWebStatus(`✓ ${r.name}.${r.format} → ${r.path}`, "ok");
+      setWebStatus(tFmt("webDone", { name: `${r.name}.${r.format}`, path: r.path }), "ok");
       showWebOutput(r.path);
     } else if (webKind === "file") {
       const dto = await invoke<BatchResult>("import_direct_url", {
@@ -1084,7 +1513,7 @@ $<HTMLButtonElement>("btn-web-run").addEventListener("click", async () => {
       const r = await invoke<SheetResult>("import_sheet_url", {
         url, outDir: webOutDir, format: fmt,
       });
-      setWebStatus(`✓ ${r.name}.${r.format} · ${r.rows} satır × ${r.cols} sütun → ${r.path}`, "ok");
+      setWebStatus(tFmt("webTable", { name: `${r.name}.${r.format}`, rows: r.rows, cols: r.cols, path: r.path }), "ok");
       showWebOutput(r.path);
     } else {
       setWebStatus(
@@ -1110,8 +1539,318 @@ function showWebOutput(path: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Video sekmesi
+// Tam ekran resim duzenleyici (kirp / dondur / parlaklik / yansit / cizim / zemin)
 // ---------------------------------------------------------------------------
+
+let edIdx = -1;
+let edTool: "crop" | "pen" | "box" | null = null;
+let edUndo: ImageData[] = [];
+let edFilterBase: ImageData | null = null;
+let edDown: { x: number; y: number } | null = null;
+let edLast: { x: number; y: number } | null = null;
+
+function edCanvas(): HTMLCanvasElement {
+  return $<HTMLCanvasElement>("editor-canvas");
+}
+
+function edCtx(): CanvasRenderingContext2D {
+  return edCanvas().getContext("2d")!;
+}
+
+function edPushUndo() {
+  try {
+    const c = edCanvas();
+    edUndo.push(edCtx().getImageData(0, 0, c.width, c.height));
+    if (edUndo.length > 20) edUndo.shift();
+  } catch { /* yoksay */ }
+}
+
+function edSetTool(tool: "crop" | "pen" | "box" | null) {
+  edTool = tool;
+  document.querySelectorAll<HTMLButtonElement>("#editor-bar [data-ed]").forEach((b) => {
+    const on = b.dataset.ed === tool
+      || (tool === null && false);
+    b.classList.toggle("on", b.dataset.ed === tool);
+    void on;
+  });
+  edCanvas().style.cursor = tool ? "crosshair" : "default";
+}
+
+function openEditor(idx: number) {
+  const L = srcLayers[idx];
+  if (!L) return;
+  edIdx = idx;
+  edUndo = [];
+  edFilterBase = null;
+  edSetTool("crop");
+  ($<HTMLInputElement>("ed-bright")).value = "100";
+  ($<HTMLInputElement>("ed-contrast")).value = "100";
+  loadImg(L.b64).then((img) => {
+    const c = edCanvas();
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    edCtx().drawImage(img, 0, 0);
+    ($("editor") as HTMLElement).hidden = false;
+  }).catch((e) => setStatus(String(e), "err"));
+}
+
+function closeEditor() {
+  ($("editor") as HTMLElement).hidden = true;
+  edIdx = -1;
+  edTool = null;
+  edUndo = [];
+  edFilterBase = null;
+}
+
+function edPos(e: MouseEvent): { x: number; y: number } {
+  const c = edCanvas();
+  const r = c.getBoundingClientRect();
+  const sx = c.width / Math.max(1, r.width);
+  const sy = c.height / Math.max(1, r.height);
+  return {
+    x: Math.max(0, Math.min(c.width - 1, Math.round((e.clientX - r.left) * sx))),
+    y: Math.max(0, Math.min(c.height - 1, Math.round((e.clientY - r.top) * sy))),
+  };
+}
+
+function edRedrawClean() {
+  // Son kayitli durumu geri koy (gecici cerceveler temizlenir).
+  const last = edUndo.length ? edUndo[edUndo.length - 1] : null;
+  if (last) {
+    const c = edCanvas();
+    if (last.width !== c.width || last.height !== c.height) {
+      c.width = last.width;
+      c.height = last.height;
+    }
+    edCtx().putImageData(last, 0, 0);
+  }
+}
+
+document.querySelectorAll<HTMLButtonElement>("#editor-bar [data-ed]").forEach((b) => {
+  const kind = b.dataset.ed;
+  if (kind !== "crop" && kind !== "pen" && kind !== "box") return;
+  b.addEventListener("click", () => {
+    const tool = kind as "crop" | "pen" | "box";
+    edSetTool(edTool === tool ? null : tool);
+  });
+});
+
+edCanvas().addEventListener("mousedown", (e) => {
+  if (e.button !== 0 || !edTool) return;
+  edDown = edPos(e);
+  edLast = edDown;
+  edPushUndo(); // tum araclar: once temiz durum kaydi
+  edFilterBase = null;
+});
+
+edCanvas().addEventListener("mousemove", (e) => {
+  if (!edDown || !edTool) return;
+  const p = edPos(e);
+  const c = edCanvas();
+  const ctx = edCtx();
+  if (edTool === "pen") {
+    ctx.strokeStyle = ($<HTMLInputElement>("ed-color")).value;
+    ctx.lineWidth = Number(($<HTMLInputElement>("ed-width")).value) || 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(edLast!.x, edLast!.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    edLast = p;
+    return;
+  }
+  // Kirp + kutu: gecici cerceve (tabani her karede geri yukle).
+  if (!edDown) return;
+  const snap = edUndo.length ? edUndo[edUndo.length - 1] : null;
+  if (edTool === "crop") {
+    // Gecici gosterge icin mevcut canvas korunur; asil kirpma mouseup'ta.
+    drawEdOverlay(p);
+    void snap;
+    return;
+  }
+  if (edTool === "box" && snap) {
+    ctx.putImageData(snap, 0, 0);
+    const x = Math.min(edDown.x, p.x);
+    const y = Math.min(edDown.y, p.y);
+    const w = Math.abs(p.x - edDown.x);
+    const h = Math.abs(p.y - edDown.y);
+    ctx.strokeStyle = ($<HTMLInputElement>("ed-color")).value;
+    ctx.lineWidth = Number(($<HTMLInputElement>("ed-width")).value) || 3;
+    ctx.strokeRect(x, y, Math.max(1, w), Math.max(1, h));
+    edLast = p;
+  }
+});
+
+function drawEdOverlay(p: { x: number; y: number }) {
+  edRedrawClean();
+  if (!edDown) return;
+  const ctx = edCtx();
+  const x = Math.min(edDown.x, p.x);
+  const y = Math.min(edDown.y, p.y);
+  const w = Math.abs(p.x - edDown.x);
+  const h = Math.abs(p.y - edDown.y);
+  ctx.save();
+  ctx.strokeStyle = "#5B8CFF";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x, y, Math.max(1, w), Math.max(1, h));
+  ctx.restore();
+}
+
+edCanvas().addEventListener("mouseup", (e) => {
+  if (!edDown || !edTool) { edDown = null; return; }
+  const p = edPos(e);
+  const tool = edTool;
+  const d = { ...edDown };
+  edDown = null;
+  edLast = null;
+  if (tool === "crop") {
+    const x = Math.min(d.x, p.x);
+    const y = Math.min(d.y, p.y);
+    const w = Math.abs(p.x - d.x);
+    const h = Math.abs(p.y - d.y);
+    if (w < 4 || h < 4) {
+      edRedrawClean();
+      return;
+    }
+    edRedrawClean(); // kesik cizgiyi sil, temiz kareden kes (undo mousedown'da var)
+    const c = edCanvas();
+    const cut = edCtx().getImageData(x, y, w, h);
+    c.width = w;
+    c.height = h;
+    edCtx().putImageData(cut, 0, 0);
+    edFilterBase = null;
+  }
+  // pen/box: cizim zaten islendi (undo mouseup'ta alinmisti).
+});
+
+function edBorder() {
+  const c = edCanvas();
+  edPushUndo();
+  const ctx = edCtx();
+  const w = Number(($<HTMLInputElement>("ed-width")).value) || 3;
+  ctx.save();
+  ctx.strokeStyle = ($<HTMLInputElement>("ed-color")).value || "#ff0000";
+  ctx.lineWidth = Math.max(1, w);
+  const inset = Math.max(1, w) / 2;
+  ctx.strokeRect(inset, inset, c.width - inset * 2, c.height - inset * 2);
+  ctx.restore();
+  edFilterBase = null;
+}
+
+function edRotate(dir: 1 | -1) {
+  const c = edCanvas();
+  edPushUndo();
+  const tmp = document.createElement("canvas");
+  tmp.width = c.width;
+  tmp.height = c.height;
+  tmp.getContext("2d")!.drawImage(c, 0, 0);
+  c.width = tmp.height;
+  c.height = tmp.width;
+  const ctx = edCtx();
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.drawImage(tmp, -tmp.width / 2, -tmp.height / 2);
+  edFilterBase = null;
+}
+
+function edFlipH() {
+  const c = edCanvas();
+  edPushUndo();
+  const tmp = document.createElement("canvas");
+  tmp.width = c.width;
+  tmp.height = c.height;
+  tmp.getContext("2d")!.drawImage(c, 0, 0);
+  const ctx = edCtx();
+  ctx.save();
+  ctx.translate(c.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+  edFilterBase = null;
+}
+
+function edApplyFilter() {
+  const b = Number(($<HTMLInputElement>("ed-bright")).value) || 100;
+  const k = Number(($<HTMLInputElement>("ed-contrast")).value) || 100;
+  if (!edFilterBase) {
+    try {
+      const c = edCanvas();
+      edFilterBase = edCtx().getImageData(0, 0, c.width, c.height);
+      edPushUndo();
+    } catch { return; }
+  } else {
+    edCtx().putImageData(edFilterBase, 0, 0);
+  }
+  const c = edCanvas();
+  const tmp = document.createElement("canvas");
+  tmp.width = c.width;
+  tmp.height = c.height;
+  const tctx = tmp.getContext("2d")!;
+  tctx.filter = `brightness(${b}%) contrast(${k}%)`;
+  tctx.drawImage(c, 0, 0);
+  edCtx().clearRect(0, 0, c.width, c.height);
+  edCtx().drawImage(tmp, 0, 0);
+}
+
+$<HTMLButtonElement>("ed-undo").addEventListener("click", () => {
+  const prev = edUndo.pop();
+  if (prev) {
+    const c = edCanvas();
+    if (prev.width !== c.width || prev.height !== c.height) {
+      c.width = prev.width;
+      c.height = prev.height;
+    }
+    edCtx().putImageData(prev, 0, 0);
+    edFilterBase = null;
+  }
+});
+
+$<HTMLButtonElement>("ed-apply").addEventListener("click", () => {
+  if (edIdx < 0 || !srcLayers[edIdx]) { closeEditor(); return; }
+  const src = edCanvas();
+  // Secili zemin rengine duzlestir (saydam PNG'ler icin).
+  const flat = document.createElement("canvas");
+  flat.width = src.width;
+  flat.height = src.height;
+  const fctx = flat.getContext("2d")!;
+  fctx.fillStyle = ($<HTMLInputElement>("ed-bg")).value || "#ffffff";
+  fctx.fillRect(0, 0, flat.width, flat.height);
+  fctx.drawImage(src, 0, 0);
+  const url = flat.toDataURL("image/png");
+  const L = srcLayers[edIdx];
+  L.b64 = url.slice(url.indexOf(",") + 1);
+  const img = new Image();
+  img.onload = () => {
+    L.nw = img.naturalWidth;
+    L.nh = img.naturalHeight;
+    const s = Math.min(1, 560 / Math.max(L.nw, L.nh));
+    L.w = Math.max(32, Math.round(L.nw * s));
+    L.h = Math.max(32, Math.round(L.nh * s));
+    renderLayers();
+    closeEditor();
+  };
+  img.onerror = () => closeEditor();
+  img.src = url;
+});
+
+$<HTMLButtonElement>("ed-cancel").addEventListener("click", closeEditor);
+
+{
+  const rl = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="rotl"]');
+  const rr = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="rotr"]');
+  const fh = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="fliph"]');
+  const bd = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="border"]');
+  rl?.addEventListener("click", () => edRotate(-1));
+  rr?.addEventListener("click", () => edRotate(1));
+  fh?.addEventListener("click", edFlipH);
+  bd?.addEventListener("click", edBorder);
+  ($<HTMLInputElement>("ed-bright")).addEventListener("input", edApplyFilter);
+  ($<HTMLInputElement>("ed-contrast")).addEventListener("input", edApplyFilter);
+  document.addEventListener("keydown", (e) => {
+    if (!($("editor") as HTMLElement).hidden && e.key === "Escape") closeEditor();
+  });
+}
 
 const btnVideoAdd = $<HTMLButtonElement>("btn-video-add");
 const btnVideoOut = $<HTMLButtonElement>("btn-video-out");
@@ -1170,11 +1909,11 @@ async function refreshVideoReq() {
   try {
     const info = await invoke<VideoSupportInfo>("video_support_info");
     const missing: string[] = [];
-    if (!info.pythonOk) missing.push("Python yok");
-    if (!info.scriptOk) missing.push("betik yok");
-    if (!info.ffmpegOk) missing.push("ffmpeg yok");
-    if (!info.tesseractOk) missing.push("Tesseract yok");
-    videoReq.textContent = missing.length ? "⚠ " + missing.join(" · ") : "✓ python · ffmpeg · tesseract hazır";
+    if (!info.pythonOk) missing.push(t("reqPython"));
+    if (!info.scriptOk) missing.push(t("reqScript"));
+    if (!info.ffmpegOk) missing.push(t("reqFfmpeg"));
+    if (!info.tesseractOk) missing.push(t("reqTess"));
+    videoReq.textContent = missing.length ? "⚠ " + missing.join(" · ") : t("reqReady");
     videoReq.className = "status " + (missing.length ? "err" : "ok");
   } catch (e) {
     videoReq.textContent = String(e);
@@ -1325,9 +2064,7 @@ function extOf(p: string): string {
 }
 
 function dropNotSupported(view: string, n: number) {
-  const msg = uiLang === "tr"
-    ? `${view}: desteklenmeyen dosya (${n} atlandı)`
-    : `${view}: unsupported file (${n} skipped)`;
+  const msg = tFmt("msgDropSkip", { view, n });
   if (view === "yakala") setStatus(msg, "err");
   else if (view === "belge") setDocStatus(msg, "err");
   else if (view === "toplu") setBatchStatus(msg, "err");
@@ -1371,6 +2108,7 @@ listen<{ paths: string[] }>("tauri://drag-drop", async (ev) => {
 // ---------------------------------------------------------------------------
 
 applyI18n();
+invoke("set_ui_lang", { lang: uiLang }).catch(() => {});
 refreshEngines();
 refreshEngineStatus();
 refreshMonitors();

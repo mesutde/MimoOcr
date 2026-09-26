@@ -6,6 +6,7 @@ mod capture;
 mod commands;
 mod batch;
 mod engine;
+mod i18n;
 mod sheet;
 mod web;
 #[cfg(windows)]
@@ -190,6 +191,7 @@ pub fn run() {
                         engine: Mutex::new(Some(Arc::new(engine))),
                         options: Mutex::new(OcrOptions::default()),
                         active_engine: Mutex::new("tesseract".to_string()),
+                        ui_lang: Mutex::new("tr".to_string()),
                         last_region: Mutex::new(None),
                     });
                 }
@@ -200,6 +202,7 @@ pub fn run() {
                         engine: Mutex::new(None),
                         options: Mutex::new(OcrOptions::default()),
                         active_engine: Mutex::new("tesseract".to_string()),
+                        ui_lang: Mutex::new("tr".to_string()),
                         last_region: Mutex::new(None),
                     });
                 }
@@ -244,10 +247,13 @@ pub fn run() {
             commands::re_capture_last,
             commands::ocr_run,
             commands::ocr_bytes,
+            commands::ocr_bytes_batch,
             commands::copy_text,
             commands::copy_image,
+            commands::clipboard_image,
             commands::save_text,
             commands::set_options,
+            commands::set_ui_lang,
             commands::get_options,
             commands::list_models,
             commands::install_model,

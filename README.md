@@ -14,15 +14,33 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.6.0)
+## İndir / Download (v0.6.1)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.6.0_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.6.0_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.0.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.6.1_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.6.1_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.1.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.6.1)
+
+- **Kaynak katmanları:** Tıkla-seç, sürükle-taşı, köşeden boyutlandır; numaralar yalnız seçilide.
+- **Tam ekran düzenleyici:** Kırp, döndür, parlaklık/kontrast, yansıt, kalem/kutu/çerçeve, zemin rengi, geri al.
+- **Çoklu yeniden OCR:** Sağ-tık motor seçimi tüm katmanları okuyup birleştirir.
+- **Pano yapıştırma:** `Ctrl+V` veya sağ-tık Yapıştır ile panodaki resim kaynağa eklenir.
+- **Tam çeviri (TR/EN):** Durum satırları, motor adları, overlay, backend mesajları dahil.
+- Kalan her şey v0.6.0 ile aynı.
+
+## What's New (v0.6.1)
+
+- **Source layers:** click-select, drag-move, corner-resize; numbers on selected only.
+- **Fullscreen editor:** crop, rotate, brightness/contrast, flip, pen/box/border, background, undo.
+- **Batch re-OCR:** right-click engine reads all layers and combines.
+- **Clipboard paste:** `Ctrl+V` or Paste adds the clipboard image.
+- **Full TR/EN translation**, incl. backend messages.
+- Everything else as in v0.6.0.
 
 ## Yenilikler (v0.6.0)
 
