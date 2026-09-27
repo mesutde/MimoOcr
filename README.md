@@ -14,15 +14,30 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.6.1)
+## İndir / Download (v0.6.2)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.6.1_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.6.1_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.1.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.6.2_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.6.2_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.2.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.6.2)
+
+- **Katman silme:** `Delete` tuşu + sağ-tık Sil / Tümünü Sil.
+- **Editör:** Sağ üst ✕, gruplu araç çubuğu, varsayılan boş araç, kalem imleci, çerçeve kutucuğu
+  (canlı kalınlık + bildirim), Ctrl+Z, canlı zemin önizleme, Orijinali Geri Yükle.
+- **Pencere X:** Editör açıksa önce editör kapanır; editör açıkken yakalama engellenir
+  ("Önce düzenleyiciyi kapatın.").
+- Kalan her şey v0.6.1 ile aynı.
+
+## What's New (v0.6.2)
+
+- **Layer delete** (key + menu), **editor ✕**, grouped toolbar, pen cursor, border checkbox,
+  Ctrl+Z, live background, restore original, window-X/editor guards.
+- Everything else as in v0.6.1.
 
 ## Yenilikler (v0.6.1)
 

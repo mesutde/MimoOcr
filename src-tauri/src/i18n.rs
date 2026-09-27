@@ -86,6 +86,11 @@ pub fn msg(lang: &str, key: &str) -> String {
         } else {
             "Panoda görsel yok.".into()
         },
+        "editor_blocked" => if en {
+            "Close the editor first.".into()
+        } else {
+            "Önce düzenleyiciyi kapatın.".into()
+        },
         // Dosya / toplu / video
         "no_files" => if en {
             "No files selected.".into()

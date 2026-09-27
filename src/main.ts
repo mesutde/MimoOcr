@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
+// Pencere X: editor aciksa once onu kapat (uygulamayi tepsiye gizleme).
+getCurrentWindow().onCloseRequested(async (e) => {
+  if (!($("editor") as HTMLElement).hidden) {
+    e.preventDefault();
+    closeEditor();
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Tipler
@@ -139,6 +148,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     lblQuality: "Kalite / Hız", optFastQ: "Hızlı (~120 kare)", optBalanced: "Dengeli (~180 kare)",
     optAccurate: "Yüksek (~280 kare)", btnVideoRun: "Videodan Çıkar",
     menuReOcr: "Motor ile yeniden OCR", menuCopyImg: "📋 Kopyala (resim)", menuEdit: "✏️ Düzenle",
+    menuRestore: "↩ Orijinali Geri Yükle",
+    menuDelete: "🗑 Sil", menuDeleteAll: "🗑 Tümünü Sil",
     menuPaste: "📋 Yapıştır", menuAll: "Tümü", menuLayer: "Katman", working: "Çalışıyor…",
     optPsmAuto: "Otomatik", optPsmBlock: "Tek blok", optPsmLine: "Tek satır", optPsmSparse: "Seyrek metin",
     optScaleNone: "Yok", optScale2: "2× Büyüt", optScale3: "3× Büyüt",
@@ -148,7 +159,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     uAreas: "alan", uMs: "ms", uWords: "kelime", uChars: "karakter", uRows: "satır", uCols: "sütun", uSec: "sn",
     stConf: "· güven %{p}",
     msgCopiedImg: "Resim panoya kopyalandı.", msgCopied: "Panoya kopyalandı.", msgSaved: "Kaydedildi: ",
-    msgPasted: "Panodan yapıştırıldı.",
+    msgPasted: "Panodan yapıştırıldı.", msgRestored: "Orijinal geri yüklendi.",
     msgPrevBusy: "Önceki işlem sürüyor, bitmesini bekleyin.",
     msgViewCut: "…[görünüm kısaltıldı: {n} karakterin tamamı kopyala/kaydet ile alınabilir]",
     msgEnterLink: "Önce geçerli bir bağlantı girin (Google Tablosu/Belgesi veya dosya).",
@@ -160,7 +171,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     webDone: "✓ {name} → {path}", webTable: "✓ {name} · {rows} satır × {cols} sütun → {path}",
     msgDropSkip: "{view}: desteklenmeyen dosya ({n} atlandı)",
     edTitle: "Düzenle", edCrop: "Kırp", edFlip: "Yansıt", edPen: "Kalem", edBox: "Kutu",
-    edBorder: "Çerçeve",
+    edBorder: "Çerçeve", edGrpSelect: "Seçim", edGrpTransform: "Dönüştür", edGrpDraw: "Çizim",
+    edGrpLight: "Işık", edColor: "Renk", edWidth: "Kalınlık",
+    edBorderDone: "Çerçeve eklendi ({w}px).",
     edBright: "Parlaklık", edContrast: "Kontrast", edBg: "Zemin",
     edUndo: "Geri Al", edApply: "Uygula", edCancel: "Vazgeç",
   },
@@ -193,6 +206,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     lblQuality: "Quality / Speed", optFastQ: "Fast (~120 frames)", optBalanced: "Balanced (~180 frames)",
     optAccurate: "High (~280 frames)", btnVideoRun: "Extract from video",
     menuReOcr: "Re-OCR with engine", menuCopyImg: "📋 Copy (image)", menuEdit: "✏️ Edit",
+    menuRestore: "↩ Restore Original",
+    menuDelete: "🗑 Delete", menuDeleteAll: "🗑 Delete all",
     menuPaste: "📋 Paste", menuAll: "All", menuLayer: "Layer", working: "Working…",
     optPsmAuto: "Auto", optPsmBlock: "Single block", optPsmLine: "Single line", optPsmSparse: "Sparse text",
     optScaleNone: "None", optScale2: "2× Upscale", optScale3: "3× Upscale",
@@ -202,7 +217,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     uAreas: "areas", uMs: "ms", uWords: "words", uChars: "chars", uRows: "rows", uCols: "cols", uSec: "s",
     stConf: "· {p}% conf.",
     msgCopiedImg: "Image copied.", msgCopied: "Copied.", msgSaved: "Saved: ",
-    msgPasted: "Pasted from clipboard.",
+    msgPasted: "Pasted from clipboard.", msgRestored: "Original restored.",
     msgPrevBusy: "Previous task still running.",
     msgViewCut: "…[view truncated: full {n} chars available via copy/save]",
     msgEnterLink: "Enter a valid link first (Google Sheet/Doc or file).",
@@ -214,7 +229,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     webDone: "✓ {name} → {path}", webTable: "✓ {name} · {rows} rows × {cols} cols → {path}",
     msgDropSkip: "{view}: unsupported file ({n} skipped)",
     edTitle: "Edit", edCrop: "Crop", edFlip: "Flip", edPen: "Pen", edBox: "Box",
-    edBorder: "Border",
+    edBorder: "Border", edGrpSelect: "Select", edGrpTransform: "Transform", edGrpDraw: "Draw",
+    edGrpLight: "Light", edColor: "Color", edWidth: "Width",
+    edBorderDone: "Border added ({w}px).",
     edBright: "Brightness", edContrast: "Contrast", edBg: "Background",
     edUndo: "Undo", edApply: "Apply", edCancel: "Cancel",
   },
@@ -425,6 +442,7 @@ $<HTMLButtonElement>("btn-engine-path").addEventListener("click", async () => {
 interface SrcLayer {
   id: number;
   b64: string;
+  orig: string;
   x: number;
   y: number;
   w: number;
@@ -744,7 +762,7 @@ function addSourceLayer(b64: string, nw: number, nh: number) {
   const w = Math.max(32, Math.round(nw * s));
   const h = Math.max(32, Math.round(nh * s));
   const off = (srcLayers.length % 6) * 24;
-  srcLayers.push({ id: layerSeq++, b64, x: off, y: off, w, h, nw, nh });
+  srcLayers.push({ id: layerSeq++, b64, orig: b64, x: off, y: off, w, h, nw, nh });
   selectedLayer = srcLayers.length - 1;
   renderLayers();
 }
@@ -772,10 +790,45 @@ function openEngineMenu(x: number, y: number, idx: number | "all") {
       openEditor(idx);
     });
     engineMenu.appendChild(ed);
+    // Duzenlenmisse orijinali geri yukleme secenegi.
+    if (srcLayers[idx] && srcLayers[idx].b64 !== srcLayers[idx].orig) {
+      const rs = document.createElement("button");
+      rs.textContent = t("menuRestore");
+      rs.addEventListener("click", () => {
+        engineMenu.hidden = true;
+        const L = srcLayers[idx];
+        if (!L) return;
+        L.b64 = L.orig;
+        const img = new Image();
+        img.onload = () => {
+          L.nw = img.naturalWidth;
+          L.nh = img.naturalHeight;
+          renderLayers();
+          setStatus(t("msgRestored"), "ok");
+        };
+        img.onerror = () => renderLayers();
+        img.src = "data:image/png;base64," + L.orig;
+      });
+      engineMenu.appendChild(rs);
+    }
+    const del = document.createElement("button");
+    del.textContent = t("menuDelete");
+    del.addEventListener("click", () => {
+      engineMenu.hidden = true;
+      deleteLayer(idx);
+    });
+    engineMenu.appendChild(del);
   } else {
     const sep = document.createElement("div");
     sep.className = "menu-sep";
     engineMenu.appendChild(sep);
+    const delAll = document.createElement("button");
+    delAll.textContent = t("menuDeleteAll");
+    delAll.addEventListener("click", () => {
+      engineMenu.hidden = true;
+      deleteAllLayers();
+    });
+    engineMenu.appendChild(delAll);
   }
   const ps = document.createElement("button");
   ps.textContent = t("menuPaste");
@@ -797,12 +850,35 @@ imgWrap.addEventListener("contextmenu", (e) => {
   openEngineMenu(e.clientX, e.clientY, "all");
 });
 
-// Ctrl+V: kaynak gorunumunde panodaki resmi katman olarak ekle.
+// Secili katmani siler (Delete tusu + sag-tik Sil).
+function deleteLayer(i: number) {
+  if (i < 0 || i >= srcLayers.length) return;
+  srcLayers.splice(i, 1);
+  if (selectedLayer >= srcLayers.length) selectedLayer = srcLayers.length - 1;
+  renderLayers();
+}
+
+function deleteAllLayers() {
+  srcLayers = [];
+  selectedLayer = -1;
+  renderLayers();
+  txtResult.value = "";
+  setStatus("");
+}
+
+// Delete: kaynak gorunumunde secili katmani sil.
 document.addEventListener("keydown", (e) => {
   const tag = (e.target as HTMLElement)?.tagName ?? "";
+  if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+  if (currentView() !== "yakala") return;
+  if (e.key === "Delete" || e.key === "Backspace") {
+    if (selectedLayer < 0 || !srcLayers[selectedLayer]) return;
+    e.preventDefault();
+    deleteLayer(selectedLayer);
+    return;
+  }
+  // Ctrl+V: panodaki resmi katman olarak ekle.
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
-    if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
-    if (currentView() !== "yakala") return;
     e.preventDefault();
     pasteFromClipboard();
   }
@@ -899,6 +975,7 @@ function setLayersFromDocs(docs: OcrDocument[]) {
     srcLayers = imgs.map((im, i) => ({
       id: layerSeq++,
       b64: docs[i].image_png_base64,
+      orig: docs[i].image_png_base64,
       x: 0, y: 0, w: im.naturalWidth, h: im.naturalHeight,
       nw: im.naturalWidth, nh: im.naturalHeight,
     }));
@@ -1026,6 +1103,7 @@ async function pushOptions() {
 
 listen<OcrDocument>("ocr-result", (ev) => showResult(ev.payload));
 listen<OcrDocument[]>("ocr-results", (ev) => showResults(ev.payload));
+listen<string>("editor-blocked", (ev) => setStatus(ev.payload, "err"));
 listen<string>("ocr-error", (ev) => setStatus(ev.payload, "err"));
 listen<Record<string, unknown>>("ocr-status", (ev) => {
   const s = ev.payload;
@@ -1557,23 +1635,34 @@ function edCtx(): CanvasRenderingContext2D {
   return edCanvas().getContext("2d")!;
 }
 
-function edPushUndo() {
+function edPushUndo(keepBorder = false) {
   try {
     const c = edCanvas();
     edUndo.push(edCtx().getImageData(0, 0, c.width, c.height));
     if (edUndo.length > 20) edUndo.shift();
+    // Baska islem cerceveyi icine gomerse takip biter (kutu isareti kalkar).
+    if (!keepBorder) edBorderReset();
   } catch { /* yoksay */ }
 }
 
 function edSetTool(tool: "crop" | "pen" | "box" | null) {
   edTool = tool;
   document.querySelectorAll<HTMLButtonElement>("#editor-bar [data-ed]").forEach((b) => {
-    const on = b.dataset.ed === tool
-      || (tool === null && false);
     b.classList.toggle("on", b.dataset.ed === tool);
-    void on;
   });
-  edCanvas().style.cursor = tool ? "crosshair" : "default";
+  // Kalem seckiliyken imlec kalem seklini alir.
+  edCanvas().style.cursor = tool === "pen"
+    ? "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M4 20l3-9L17 1l3 3L10 14l-6 6z' fill='%23ff0000' stroke='white' stroke-width='1'/></svg>\") 4 20, crosshair"
+    : tool ? "crosshair" : "default";
+}
+
+function edRefreshSwatch() {
+  const col = ($<HTMLInputElement>("ed-color")).value || "#ff0000";
+  const w = Number(($<HTMLInputElement>("ed-width")).value) || 3;
+  const sw = $("ed-swatch") as HTMLElement;
+  sw.style.background = col;
+  sw.style.height = Math.max(3, Math.min(14, w)) + "px";
+  ($("ed-wlabel") as HTMLElement).textContent = `${w}px`;
 }
 
 function openEditor(idx: number) {
@@ -1582,7 +1671,10 @@ function openEditor(idx: number) {
   edIdx = idx;
   edUndo = [];
   edFilterBase = null;
-  edSetTool("crop");
+  invoke("set_editor_open", { open: true }).catch(() => {});
+  // Varsayilan arac yok (kullanici secer).
+  edSetTool(null);
+  edRefreshSwatch();
   ($<HTMLInputElement>("ed-bright")).value = "100";
   ($<HTMLInputElement>("ed-contrast")).value = "100";
   loadImg(L.b64).then((img) => {
@@ -1590,6 +1682,8 @@ function openEditor(idx: number) {
     c.width = img.naturalWidth;
     c.height = img.naturalHeight;
     edCtx().drawImage(img, 0, 0);
+    ($("editor-stage") as HTMLElement).style.background =
+      ($<HTMLInputElement>("ed-bg")).value || "#ffffff";
     ($("editor") as HTMLElement).hidden = false;
   }).catch((e) => setStatus(String(e), "err"));
 }
@@ -1600,7 +1694,15 @@ function closeEditor() {
   edTool = null;
   edUndo = [];
   edFilterBase = null;
+  invoke("set_editor_open", { open: false }).catch(() => {});
+  // Ana formu one getir.
+  try {
+    const w = getCurrentWindow();
+    w.show().then(() => w.unminimize().then(() => w.setFocus()).catch(() => {})).catch(() => {});
+  } catch { /* yoksay */ }
 }
+
+listen<string>("editor-blocked", (ev) => setStatus(ev.payload, "err"));
 
 function edPos(e: MouseEvent): { x: number; y: number } {
   const c = edCanvas();
@@ -1724,18 +1826,68 @@ edCanvas().addEventListener("mouseup", (e) => {
   // pen/box: cizim zaten islendi (undo mouseup'ta alinmisti).
 });
 
-function edBorder() {
+// Cerceve checkbox mantigi: seciliyse aktif, birakilirsa son islem geri alinir.
+// Renk/kalinlik degisirse mevcut cerceve degistirilir (yigin sismez).
+let edBorderOn = false;
+
+function edDrawBorder() {
   const c = edCanvas();
-  edPushUndo();
   const ctx = edCtx();
-  const w = Number(($<HTMLInputElement>("ed-width")).value) || 3;
+  const col = ($<HTMLInputElement>("ed-color")).value || "#ff0000";
+  const w = Number(($<HTMLInputElement>("ed-width")).value) || 4;
   ctx.save();
-  ctx.strokeStyle = ($<HTMLInputElement>("ed-color")).value || "#ff0000";
+  ctx.strokeStyle = col;
   ctx.lineWidth = Math.max(1, w);
   const inset = Math.max(1, w) / 2;
   ctx.strokeRect(inset, inset, c.width - inset * 2, c.height - inset * 2);
   ctx.restore();
   edFilterBase = null;
+}
+
+function edBorderReplace() {
+  // Yasli cerceveyi kaldir (bir adim geri), tazesini ciz.
+  const prev = edUndo.pop();
+  if (prev) {
+    const c = edCanvas();
+    if (prev.width !== c.width || prev.height !== c.height) {
+      c.width = prev.width;
+      c.height = prev.height;
+    }
+    edCtx().putImageData(prev, 0, 0);
+  }
+  edPushUndo(true);
+  edDrawBorder();
+}
+
+// Diger islemler cerceveyi icine gomerse takip biter (kutu isareti kalkar).
+function edBorderReset() {
+  edBorderOn = false;
+  const box = $("ed-border-check") as HTMLInputElement | null;
+  if (box) box.checked = false;
+}
+
+function edBorder(check: boolean) {
+  const box = $<HTMLInputElement>("ed-border-check");
+  if (check) {
+    edPushUndo(true);
+    edDrawBorder();
+    edBorderOn = true;
+    box.checked = true;
+    setStatus(tFmt("edBorderDone", { w: Number(($<HTMLInputElement>("ed-width")).value) || 4 }), "ok");
+  } else if (edBorderOn) {
+    const prev = edUndo.pop();
+    if (prev) {
+      const c = edCanvas();
+      if (prev.width !== c.width || prev.height !== c.height) {
+        c.width = prev.width;
+        c.height = prev.height;
+      }
+      edCtx().putImageData(prev, 0, 0);
+    }
+    edBorderOn = false;
+    box.checked = false;
+    edFilterBase = null;
+  }
 }
 
 function edRotate(dir: 1 | -1) {
@@ -1835,20 +1987,48 @@ $<HTMLButtonElement>("ed-apply").addEventListener("click", () => {
 });
 
 $<HTMLButtonElement>("ed-cancel").addEventListener("click", closeEditor);
+$<HTMLButtonElement>("ed-close").addEventListener("click", closeEditor);
+($<HTMLInputElement>("ed-color")).addEventListener("input", edRefreshSwatch);
+($<HTMLInputElement>("ed-width")).addEventListener("input", edRefreshSwatch);
 
 {
   const rl = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="rotl"]');
   const rr = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="rotr"]');
   const fh = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="fliph"]');
-  const bd = document.querySelector<HTMLButtonElement>('#editor-bar [data-ed="border"]');
-  rl?.addEventListener("click", () => edRotate(-1));
-  rr?.addEventListener("click", () => edRotate(1));
-  fh?.addEventListener("click", edFlipH);
-  bd?.addEventListener("click", edBorder);
+  const bdCheck = $<HTMLInputElement>("ed-border-check");
+  rl?.addEventListener("click", () => { edRotate(-1); edBorderReset(); });
+  rr?.addEventListener("click", () => { edRotate(1); edBorderReset(); });
+  fh?.addEventListener("click", () => { edFlipH(); edBorderReset(); });
+  bdCheck?.addEventListener("change", () => edBorder(bdCheck.checked));
+  const edCol = $<HTMLInputElement>("ed-color");
+  const edW = $<HTMLInputElement>("ed-width");
+  const edLiveBorder = () => {
+    if (!edBorderOn) return;
+    edBorderReplace();
+    edRefreshSwatch();
+  };
+  edCol?.addEventListener("input", () => { edRefreshSwatch(); edLiveBorder(); });
+  edW?.addEventListener("input", () => { edRefreshSwatch(); edLiveBorder(); });
   ($<HTMLInputElement>("ed-bright")).addEventListener("input", edApplyFilter);
   ($<HTMLInputElement>("ed-contrast")).addEventListener("input", edApplyFilter);
+  // Zemin rengi sahnede aninda gorunur (saydam alanlar bu renkle gorunur;
+  // Uygula'da ayni renkle duzlestirilir).
+  ($<HTMLInputElement>("ed-bg")).addEventListener("input", () => {
+    ($("editor-stage") as HTMLElement).style.background =
+      ($<HTMLInputElement>("ed-bg")).value || "#ffffff";
+  });
   document.addEventListener("keydown", (e) => {
     if (!($("editor") as HTMLElement).hidden && e.key === "Escape") closeEditor();
+  });
+  // Ctrl+Z: duzenleyicide geri al.
+  document.addEventListener("keydown", (e) => {
+    if (($("editor") as HTMLElement).hidden) return;
+    const tag = (e.target as HTMLElement)?.tagName ?? "";
+    if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+      e.preventDefault();
+      ($<HTMLButtonElement>("ed-undo")).click();
+    }
   });
 }
 

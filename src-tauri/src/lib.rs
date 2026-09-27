@@ -34,6 +34,12 @@ fn show_main(app: &tauri::AppHandle) {
 }
 
 fn open_overlay(app: &tauri::AppHandle) {
+    // Duzenleyici aciksa yakalama baslamaz; ana pencere one gelir.
+    if let Some(state) = app.try_state::<commands::AppState>() {
+        if !commands::guard_editor_closed(app, &state) {
+            return;
+        }
+    }
     // Secim sirasinda ana pencere gizlenir ki kullanici istedigi alani secebilsin.
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
@@ -193,6 +199,7 @@ pub fn run() {
                         active_engine: Mutex::new("tesseract".to_string()),
                         ui_lang: Mutex::new("tr".to_string()),
                         last_region: Mutex::new(None),
+                        editor_open: Mutex::new(false),
                     });
                 }
                 Err(e) => {
@@ -204,6 +211,7 @@ pub fn run() {
                         active_engine: Mutex::new("tesseract".to_string()),
                         ui_lang: Mutex::new("tr".to_string()),
                         last_region: Mutex::new(None),
+                        editor_open: Mutex::new(false),
                     });
                 }
             }
@@ -254,6 +262,7 @@ pub fn run() {
             commands::save_text,
             commands::set_options,
             commands::set_ui_lang,
+            commands::set_editor_open,
             commands::get_options,
             commands::list_models,
             commands::install_model,

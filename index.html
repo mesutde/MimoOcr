@@ -259,24 +259,39 @@
     <div id="editor" hidden>
       <div id="editor-bar">
         <span id="editor-title" data-i18n="edTitle">Düzenle</span>
-        <button data-ed="crop" data-i18n="edCrop">Kırp</button>
-        <button data-ed="rotl" title="↺">↺</button>
-        <button data-ed="rotr" title="↻">↻</button>
-        <button data-ed="fliph" data-i18n="edFlip">Yansıt</button>
-        <button data-ed="pen" data-i18n="edPen">Kalem</button>
-        <button data-ed="box" data-i18n="edBox">Kutu</button>
-        <button data-ed="border" data-i18n="edBorder">Çerçeve</button>
-        <input id="ed-color" type="color" value="#ff0000" />
-        <input id="ed-width" type="range" min="1" max="12" value="3" />
-        <label data-i18n="edBright">Parlaklık</label>
-        <input id="ed-bright" type="range" min="50" max="150" value="100" />
-        <label data-i18n="edContrast">Kontrast</label>
-        <input id="ed-contrast" type="range" min="50" max="150" value="100" />
-        <label data-i18n="edBg">Zemin</label>
-        <input id="ed-bg" type="color" value="#ffffff" />
-        <button id="ed-undo" data-i18n="edUndo">Geri Al</button>
-        <button id="ed-apply" class="primary" data-i18n="edApply">Uygula</button>
-        <button id="ed-cancel" data-i18n="edCancel">Vazgeç</button>
+        <span class="ed-group">
+          <span class="ed-group-t" data-i18n="edGrpSelect">Seçim</span>
+          <button data-ed="crop" data-i18n="edCrop">Kırp</button>
+        </span>
+        <span class="ed-group">
+          <span class="ed-group-t" data-i18n="edGrpTransform">Dönüştür</span>
+          <button data-ed="rotl" title="↺">↺</button>
+          <button data-ed="rotr" title="↻">↻</button>
+          <button data-ed="fliph" data-i18n="edFlip">Yansıt</button>
+        </span>
+        <span class="ed-group">
+          <span class="ed-group-t" data-i18n="edGrpDraw">Çizim</span>
+          <button data-ed="pen" data-i18n="edPen">Kalem</button>
+          <button data-ed="box" data-i18n="edBox">Kutu</button>
+          <label class="ed-check"><input id="ed-border-check" type="checkbox" /> <span data-i18n="edBorder">Çerçeve</span></label>
+          <label class="ed-mini"><span data-i18n="edColor">Renk</span><input id="ed-color" type="color" value="#ff0000" /></label>
+          <label class="ed-mini"><span data-i18n="edWidth">Kalınlık</span><input id="ed-width" type="range" min="1" max="24" value="3" /><span id="ed-swatches"><span id="ed-swatch"></span><span id="ed-wlabel">3px</span></span></label>
+        </span>
+        <span class="ed-group">
+          <span class="ed-group-t" data-i18n="edGrpLight">Işık</span>
+          <label class="ed-mini"><span data-i18n="edBright">Parlaklık</span><input id="ed-bright" type="range" min="50" max="150" value="100" /></label>
+          <label class="ed-mini"><span data-i18n="edContrast">Kontrast</span><input id="ed-contrast" type="range" min="50" max="150" value="100" /></label>
+        </span>
+        <span class="ed-group">
+          <span class="ed-group-t" data-i18n="edBg">Zemin</span>
+          <input id="ed-bg" type="color" value="#ffffff" />
+        </span>
+        <span class="ed-group">
+          <button id="ed-undo" data-i18n="edUndo">Geri Al</button>
+          <button id="ed-apply" class="primary" data-i18n="edApply">Uygula</button>
+          <button id="ed-cancel" data-i18n="edCancel">Vazgeç</button>
+          <button id="ed-close" title="✕">✕</button>
+        </span>
       </div>
       <div id="editor-stage"><canvas id="editor-canvas"></canvas></div>
     </div>

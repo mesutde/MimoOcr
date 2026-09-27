@@ -17,6 +17,8 @@ pub struct AppState {
     pub active_engine: Mutex<String>,
     /// Arayuz dili ("tr" | "en") — backend mesajlari icin.
     pub ui_lang: Mutex<String>,
+    /// Resim duzenleyici acik mi? Aciksa bolge yakalama baslatilmaz.
+    pub editor_open: Mutex<bool>,
     /// Son başarılı bölge seçimi (overlay yerel mantıksal koordinatları)
     pub last_region: Mutex<Option<[f64; 4]>>,
 }
@@ -35,6 +37,27 @@ pub fn set_ui_lang(state: State<'_, AppState>, lang: String) {
         "en"
     };
     *state.ui_lang.lock().unwrap() = l.to_string();
+}
+
+/// Duzenleyici acilip kapandikca on yuz bildirir; acikken yakalama baslamaz.
+#[tauri::command]
+pub fn set_editor_open(state: State<'_, AppState>, open: bool) {
+    *state.editor_open.lock().unwrap() = open;
+}
+
+/// Duzenleyici aciksa yakalamayi engelle + ana pencereye uyari gonder.
+/// true donerse yakalama devam edebilir.
+pub(crate) fn guard_editor_closed(app: &AppHandle, state: &State<'_, AppState>) -> bool {
+    if *state.editor_open.lock().unwrap() {
+        use tauri::Emitter;
+        let _ = app.emit(
+            "editor-blocked",
+            crate::i18n::msg(&lang_of(state), "editor_blocked"),
+        );
+        show_main(app);
+        return false;
+    }
+    true
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +287,9 @@ fn settle_overlay_hidden(app: &AppHandle) {
 
 #[tauri::command]
 pub fn begin_capture(app: AppHandle, state: State<'_, AppState>) -> Result<Option<[f64; 4]>, OcrError> {
+    if !guard_editor_closed(&app, &state) {
+        return Ok(*state.last_region.lock().unwrap());
+    }
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
     }
