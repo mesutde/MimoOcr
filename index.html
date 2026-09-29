@@ -113,7 +113,9 @@
           <div class="pane-title"><span data-i18n="tabBatch">Toplu</span><span id="batch-status" class="status"></span></div>
           <div class="row">
             <button id="btn-batch-add" data-i18n="btnBatchAdd">Dosya ekle…</button>
+            <button id="btn-batch-add-dir" data-i18n="btnBatchAddDir">Klasör ekle…</button>
             <button id="btn-batch-out" data-i18n="btnBatchOutDir">Çıktı klasörü…</button>
+            <label class="check"><input type="checkbox" id="chk-batch-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
           </div>
           <div id="batch-files" class="filelist"><span class="muted" data-i18n="batchNoFiles">Dosya yok</span></div>
           <div class="outdir-row"><span class="outdir-label" data-i18n="lblOutDir">Kaydedilecek klasör:</span><span id="batch-outdir">…</span></div>
@@ -132,6 +134,18 @@
                 <option value="separate" selected data-i18n="optSeparate">Ayrı ayrı</option>
                 <option value="combined" data-i18n="optCombined">Birleştir</option>
               </select>
+            </div>
+            <div class="field">
+              <label for="sel-batch-split" data-i18n="lblSplit">Bölme</label>
+              <select id="sel-batch-split">
+                <option value="none" selected data-i18n="optSplitNone">Bölme yok</option>
+                <option value="count" data-i18n="optSplitCount">Parça sayısı</option>
+                <option value="size" data-i18n="optSplitSize">MB eşiği</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="inp-batch-split" data-i18n="lblSplitValue">Parça / MB</label>
+              <input type="number" id="inp-batch-split" min="2" max="50" step="1" value="4">
             </div>
           </div>
           <div class="row">

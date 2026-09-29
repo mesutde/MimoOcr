@@ -3,7 +3,9 @@
 
 Usage: batch_extract.py <file>
 Prints UTF-8 text to stdout. Exit 0 on success.
-Supported: pdf, docx, xlsx, pptx, udf (UYAP), txt, md, csv, json, rtf(simple)
+Supported: pdf, docx, xlsx, pptx, udf (UYAP), odt/ods/odp, epub,
+rtf(simple), + plain text (txt md csv json log xml html htm sql srt vtt
+ini cfg yaml yml toml ps1 bat cmd sh)
 """
 
 from __future__ import annotations
@@ -135,6 +137,84 @@ def extract_rtf(path: Path) -> str:
     return _strip_rtf(read_plain(path))
 
 
+PLAIN_EXTS = {
+    "txt", "md", "csv", "json", "log", "xml", "html", "htm",
+    "sql", "srt", "vtt", "ini", "cfg", "yaml", "yml", "toml",
+    "ps1", "bat", "cmd", "sh",
+}
+
+
+def extract_odf(path: Path) -> str:
+    """LibreOffice odt/ods/odp: ZIP icindeki content.xml'den <text:p> metinleri.
+
+    ODS'te sayfa (table:table) basliklari korunur.
+    """
+    if not zipfile.is_zipfile(path):
+        raise RuntimeError("not an ODF zip container (or file is corrupt)")
+    with zipfile.ZipFile(path, "r") as z:
+        try:
+            xml = z.read("content.xml").decode("utf-8", errors="replace")
+        except KeyError as e:
+            raise RuntimeError("ODF content.xml not found") from e
+    tables = re.findall(
+        r'<table:table[^>]*table:name="([^"]*)"[^>]*>(.*?)</table:table>',
+        xml,
+        re.DOTALL,
+    )
+    parts: list[str] = []
+    if tables:
+        for name, body in tables:
+            paras = re.findall(r"<text:p[^>]*>(.*?)</text:p>", body, re.DOTALL)
+            clean = [_clean_odf_p(p) for p in paras]
+            clean = [c for c in clean if c]
+            if clean:
+                parts.append(f"## {html.unescape(name)}")
+                parts.extend(clean)
+    else:
+        paras = re.findall(r"<text:p[^>]*>(.*?)</text:p>", xml, re.DOTALL)
+        parts = [_clean_odf_p(p) for p in paras]
+        parts = [c for c in parts if c]
+    return "\n".join(parts)
+
+
+def _clean_odf_p(fragment: str) -> str:
+    # <text:span>, <text:s c="n"/> (bosluk), <text:line-break/> cozulur.
+    fragment = re.sub(r"<text:s[^/]*c=\"(\d+)\"[^/]*/>", lambda m: " " * int(m.group(1)), fragment)
+    fragment = re.sub(r"<text:s[^/]*/>", " ", fragment)
+    fragment = re.sub(r"<text:line-break[^/]*/>", "\n", fragment)
+    fragment = re.sub(r"<[^>]+>", "", fragment)
+    return html.unescape(fragment).strip()
+
+
+def extract_epub(path: Path) -> str:
+    """EPUB: ZIP icindeki xhtml/html belgelerinden duz metin (dosya adi sirasi)."""
+    if not zipfile.is_zipfile(path):
+        raise RuntimeError("not an EPUB zip container (or file is corrupt)")
+    with zipfile.ZipFile(path, "r") as z:
+        names = sorted(
+            n for n in z.namelist()
+            if n.lower().endswith((".xhtml", ".xht", ".html", ".htm"))
+            and not n.startswith("META-INF/")
+        )
+        if not names:
+            raise RuntimeError("EPUB has no readable pages")
+        parts = []
+        for name in names:
+            raw = z.read(name).decode("utf-8", errors="replace")
+            body = re.search(r"<body[^>]*>(.*)</body>", raw, re.DOTALL | re.IGNORECASE)
+            frag = body.group(1) if body else raw
+            frag = re.sub(r"<script.*?</script>", " ", frag, flags=re.DOTALL | re.IGNORECASE)
+            frag = re.sub(r"<style.*?</style>", " ", frag, flags=re.DOTALL | re.IGNORECASE)
+            frag = re.sub(r"<(p|h\d|li|tr|div|br)[^>]*>", "\n", frag, flags=re.IGNORECASE)
+            frag = re.sub(r"<[^>]+>", "", frag)
+            text = html.unescape(frag)
+            text = re.sub(r"[ \t]+\n", "\n", text)
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+            if text:
+                parts.append(text)
+    return "\n\n".join(parts)
+
+
 def _xml_local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1] if "}" in tag else tag
 
@@ -240,7 +320,11 @@ def main() -> int:
             text = extract_udf(path)
         elif ext == "rtf":
             text = extract_rtf(path)
-        elif ext in {"txt", "md", "csv", "json", "log", "xml", "html", "htm"}:
+        elif ext in {"odt", "ods", "odp"}:
+            text = extract_odf(path)
+        elif ext == "epub":
+            text = extract_epub(path)
+        elif ext in PLAIN_EXTS:
             text = read_plain(path)
         else:
             print(f"unsupported type: .{ext}", file=sys.stderr)

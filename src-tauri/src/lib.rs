@@ -278,6 +278,7 @@ pub fn run() {
             batch::list_monitors,
             batch::ocr_path,
             batch::batch_process_files,
+            batch::expand_batch_dirs,
             sheet::import_sheet_url,
             sheet::import_doc_url,
             web::detect_web_url,

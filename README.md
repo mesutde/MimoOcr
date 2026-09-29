@@ -14,15 +14,33 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.6.2)
+## İndir / Download (v0.6.3)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.6.2_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.6.2_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.2.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.6.3_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.6.3_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.3.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.6.3)
+
+- **Toplu → Klasör Ekle:** Dosya Ekle ile aynı listeye ekler; **"Alt klasörleri de ara"**
+  kutusu (varsayılan açık) ile alt klasörler de taranır.
+- **Yeni formatlar:** `sql, srt, vtt, ini, cfg, yaml, yml, toml, ps1, bat, cmd, sh`
+  (düz metin) + `odt, ods, odp` (LibreOffice) + `epub`.
+- **Birleşik çıktı bölme:** Kayıt=Birleştir iken Bölme seçimi — parça sayısına göre
+  (2–50, örn. 4/5/6) veya MB eşiğine göre (örn. 15/22/60) → `mimo-batch-part1…`.
+  TXT/MD ve PDF birleştirmede çalışır; Ayrı-ayrı kipi etkilenmez.
+- Kalan her şey v0.6.2 ile aynı.
+
+## What's New (v0.6.3)
+
+- **Batch → Add folder** (merges into the same list; "Include subfolders" on by default).
+- **New formats:** plain-text bundle (sql, srt, vtt, ini, cfg, yaml/yml, toml, ps1, bat, cmd, sh) + odt/ods/odp + epub.
+- **Split combined output** by part count or MB threshold (`mimo-batch-part1…`); txt/md + pdf.
+- Everything else as in v0.6.2.
 
 ## Yenilikler (v0.6.2)
 

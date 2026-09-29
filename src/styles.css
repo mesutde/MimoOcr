@@ -78,10 +78,11 @@ kbd {
 
 .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
   color: var(--faint); font-weight: 600; margin-bottom: 4px; }
-select, input[type="text"], input:not([type]) {
+select, input[type="text"], input[type="number"], input:not([type]) {
   width: 100%; background: var(--panel2); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: 13px;
 }
+select:disabled, input:disabled { opacity: .45; }
 #doc-path { flex: 3; }
 
 #privacy {

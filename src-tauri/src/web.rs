@@ -216,6 +216,9 @@ pub async fn import_direct_url(
         Some("separate".into()),
         None,
         Some(true),
+        None,
+        None,
+        None,
     )
     .await?;
     let _ = std::fs::remove_file(&tmp_path);

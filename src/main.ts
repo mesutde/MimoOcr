@@ -82,6 +82,7 @@ interface BatchResult {
   okCount: number;
   failCount: number;
   combinedPath?: string | null;
+  combinedPaths?: string[];
 }
 
 interface VideoItemResult {
@@ -135,8 +136,11 @@ const I18N: Record<Lang, Record<string, string>> = {
     udfTip: "UYAP Doküman Formatı (.udf): ZIP + content.xml. Metin çıkarılır; imza doğrulanmaz, gömülü resimler ayrı OCR'a girmez.",
     btnUdfRun: "UDF'leri Dönüştür", btnUdfAdd: "UDF Ekle…", udfNoFiles: "UDF dosyası yok",
     lblOutDir: "Kaydedilecek klasör:", chkPdfTitle: "PDF'e dosya adını başlık olarak yaz",
-    btnBatchAdd: "Dosya ekle…", btnBatchOutDir: "Çıktı klasörü…",
-    batchNoFiles: "Dosya yok", lblFormat: "Format", lblSaveMode: "Kayıt",
+    btnBatchAdd: "Dosya ekle…", btnBatchAddDir: "Klasör ekle…", btnBatchOutDir: "Çıktı klasörü…",
+    batchNoFiles: "Dosya yok", batchDirEmpty: "Klasörde desteklenen dosya yok.", batchDirAdded: "klasörden eklendi",
+    lblFormat: "Format", lblSaveMode: "Kayıt", lblRecursive: "Alt klasörleri de ara",
+    lblSplit: "Bölme", lblSplitValue: "Parça / MB",
+    optSplitNone: "Bölme yok", optSplitCount: "Parça sayısı", optSplitSize: "MB eşiği",
     optSeparate: "Ayrı ayrı", optCombined: "Birleştir",
     btnBatchRun: "Toplu başlat", btnClear: "Temizle",
     videoDesc: "Kaydırılan ekran kayıtlarından metin çıkarır: ffmpeg kare örnekleme → Tesseract → scroll tekrarı eleme → CSV/TXT.",
@@ -193,8 +197,11 @@ const I18N: Record<Lang, Record<string, string>> = {
     udfTip: "UYAP Document Format (.udf): ZIP + content.xml. Text is extracted; signatures are not verified, embedded images are not OCR'd separately.",
     btnUdfRun: "Convert UDFs", btnUdfAdd: "Add UDFs…", udfNoFiles: "No UDF files",
     lblOutDir: "Save folder:", chkPdfTitle: "Write file name as PDF title",
-    btnBatchAdd: "Add files…", btnBatchOutDir: "Output folder…",
-    batchNoFiles: "No files", lblFormat: "Format", lblSaveMode: "Save",
+    btnBatchAdd: "Add files…", btnBatchAddDir: "Add folder…", btnBatchOutDir: "Output folder…",
+    batchNoFiles: "No files", batchDirEmpty: "No supported files in folder.", batchDirAdded: "added from folder",
+    lblFormat: "Format", lblSaveMode: "Save", lblRecursive: "Include subfolders",
+    lblSplit: "Split", lblSplitValue: "Parts / MB",
+    optSplitNone: "No split", optSplitCount: "Part count", optSplitSize: "MB threshold",
     optSeparate: "Separate", optCombined: "Combined",
     btnBatchRun: "Start batch", btnClear: "Clear",
     videoDesc: "Extract text from scrolled screen recordings: ffmpeg sampling → Tesseract → scroll dedup → CSV/TXT.",
@@ -1151,8 +1158,11 @@ function docFilter() {
   return {
     filters: [{
       name: t("filterDocs"),
-      extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp",
-        "pdf", "docx", "xlsx", "pptx", "udf", "txt", "md"],
+      extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp", "gif",
+        "pdf", "docx", "xlsx", "pptx", "udf", "odt", "ods", "odp", "epub",
+        "rtf", "txt", "md", "csv", "json", "log", "xml", "html", "htm",
+        "sql", "srt", "vtt", "ini", "cfg", "yaml", "yml", "toml",
+        "ps1", "bat", "cmd", "sh"],
     }],
   };
 }
@@ -1309,11 +1319,8 @@ $<HTMLButtonElement>("btn-udf-run").addEventListener("click", async () => {
       if (it.ok) div.className = "fout";
       udfOutputs.appendChild(div);
     }
-    if (dto.combinedPath) {
-      const div = document.createElement("div");
-      div.className = "fout";
-      div.textContent = "📦 " + dto.combinedPath;
-      udfOutputs.appendChild(div);
+    if (dto.combinedPaths?.length || dto.combinedPath) {
+      renderCombined(dto.combinedPaths, dto.combinedPath, udfOutputs);
     }
   } catch (e) {
     setUdfStatus(String(e), "err");
@@ -1374,12 +1381,57 @@ batchFilesEl.addEventListener("click", (e) => {
   renderBatchFiles();
 });
 
+function renderCombined(paths: string[] | undefined, old: string | null | undefined, out: HTMLElement) {
+  const list = (paths && paths.length ? paths : (old ? [old] : []));
+  for (const p of list) {
+    const div = document.createElement("div");
+    div.className = "fout";
+    div.textContent = "📦 " + p;
+    out.appendChild(div);
+  }
+}
+
 $<HTMLButtonElement>("btn-batch-add").addEventListener("click", async () => {
   const sel = await open({ multiple: true, ...docFilter() });
   if (Array.isArray(sel)) batchPaths.push(...sel.filter((s) => !batchPaths.includes(s)));
   else if (typeof sel === "string" && !batchPaths.includes(sel)) batchPaths.push(sel);
   renderBatchFiles();
 });
+
+$<HTMLButtonElement>("btn-batch-add-dir").addEventListener("click", async () => {
+  const sel = await open({ directory: true, multiple: true });
+  if (!sel) return;
+  const dirs = (Array.isArray(sel) ? sel : [sel]).filter((s) => typeof s === "string") as string[];
+  if (!dirs.length) return;
+  const recursive = ($("chk-batch-recursive") as HTMLInputElement).checked;
+  try {
+    const found = await invoke<string[]>("expand_batch_dirs", { dirs, recursive });
+    const fresh = found.filter((s) => !batchPaths.includes(s));
+    batchPaths.push(...fresh);
+    setBatchStatus(fresh.length ? `${fresh.length} ${t("batchDirAdded")}` : t("batchDirEmpty"), fresh.length ? "ok" : "err");
+  } catch (e) {
+    setBatchStatus(String(e), "err");
+  }
+  renderBatchFiles();
+});
+
+function syncSplitInput() {
+  const mode = ($("sel-batch-split") as HTMLSelectElement).value;
+  const inp = $("inp-batch-split") as HTMLInputElement;
+  const combined = ($("sel-batch-mode") as HTMLSelectElement).value === "combined";
+  inp.disabled = !combined || mode === "none";
+  if (mode === "size") {
+    inp.min = "1"; inp.max = "4096"; inp.step = "1";
+    if (Number(inp.value) < 1 || Number(inp.value) > 4096) inp.value = "15";
+  } else {
+    inp.min = "2"; inp.max = "50"; inp.step = "1";
+    if (Number(inp.value) < 2 || Number(inp.value) > 50) inp.value = "4";
+  }
+  ($("sel-batch-split") as HTMLSelectElement).disabled = !combined;
+}
+$("sel-batch-split")?.addEventListener("change", syncSplitInput);
+$("sel-batch-mode")?.addEventListener("change", syncSplitInput);
+syncSplitInput();
 
 $<HTMLButtonElement>("btn-batch-out").addEventListener("click", async () => {
   const sel = await open({ directory: true, multiple: false });
@@ -1410,12 +1462,17 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
   batchOutputs.innerHTML = "";
   batchBar.style.width = "0%";
   try {
+    const splitMode = ($("sel-batch-split") as HTMLSelectElement).value;
+    const splitVal = Number(($("inp-batch-split") as HTMLInputElement).value);
     const dto = await invoke<BatchResult>("batch_process_files", {
       files: batchPaths,
       outDir: batchOutDir,
       format: selBatchFormat.value,
       saveMode: selBatchMode.value,
       fileTitle: true,
+      splitMode,
+      splitCount: splitMode === "count" ? Math.round(splitVal) : null,
+      splitMb: splitMode === "size" ? splitVal : null,
     });
     batchBar.style.width = "100%";
     setBatchStatus(`${dto.okCount}/${dto.items.length} → ${dto.outDir}`, dto.failCount ? "err" : "ok");
@@ -1425,11 +1482,8 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
       if (it.ok) div.className = "fout";
       batchOutputs.appendChild(div);
     }
-    if (dto.combinedPath) {
-      const div = document.createElement("div");
-      div.className = "fout";
-      div.textContent = "📦 " + dto.combinedPath;
-      batchOutputs.appendChild(div);
+    if (dto.combinedPaths?.length || dto.combinedPath) {
+      renderCombined(dto.combinedPaths, dto.combinedPath, batchOutputs);
     }
   } catch (e) {
     setBatchStatus(String(e), "err");
@@ -1581,11 +1635,8 @@ $<HTMLButtonElement>("btn-web-run").addEventListener("click", async () => {
         if (it.ok) div.className = "fout";
         webOutputs.appendChild(div);
       }
-      if (dto.combinedPath) {
-        const div = document.createElement("div");
-        div.className = "fout";
-        div.textContent = "📦 " + dto.combinedPath;
-        webOutputs.appendChild(div);
+      if (dto.combinedPaths?.length || dto.combinedPath) {
+        renderCombined(dto.combinedPaths, dto.combinedPath, webOutputs);
       }
     } else if (webKind === "sheet") {
       const r = await invoke<SheetResult>("import_sheet_url", {
