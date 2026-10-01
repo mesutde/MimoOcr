@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { emitTo } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 
 interface OcrDocument {
   plain_text: string;
@@ -16,6 +16,7 @@ interface Rect {
 const rect = document.getElementById("rect") as HTMLDivElement;
 const sizeLbl = document.getElementById("size") as HTMLDivElement;
 const hint = document.getElementById("hint") as HTMLDivElement;
+const dim = document.getElementById("dim") as HTMLDivElement;
 
 let startX = 0;
 let startY = 0;
@@ -111,13 +112,41 @@ function resetOverlay() {
   queued = [];
   for (const b of boxes) b.remove();
   boxes.length = 0;
+  frameOn = false;
+  rect.classList.remove("rec");
+  sizeLbl.classList.remove("rec");
+  dim.style.display = "";
+  hint.style.display = "";
   rect.style.display = "none";
   sizeLbl.style.display = "none";
   hint.innerHTML = baseHint();
 }
 
+// Kayit cercevesi modu: sadece goz (tiklama gecirgen, secim kapali).
+// Cizgi bolgenin 4px DISINA tasirilir → videoya girmez.
+let frameOn = false;
+listen<[number, number, number, number]>("rec-frame", (ev) => {
+  const [x, y, w, h] = ev.payload;
+  resetOverlay();
+  frameOn = true;
+  dragging = false;
+  dim.style.display = "none";
+  hint.style.display = "none";
+  rect.classList.add("rec");
+  rect.style.display = "block";
+  rect.style.left = x - 4 + "px";
+  rect.style.top = y - 4 + "px";
+  rect.style.width = w + 8 + "px";
+  rect.style.height = h + 8 + "px";
+  sizeLbl.classList.add("rec");
+  sizeLbl.style.display = "block";
+  sizeLbl.textContent = "● REC";
+  sizeLbl.style.left = x - 4 + "px";
+  sizeLbl.style.top = Math.max(0, y - 34) + "px";
+});
+
 window.addEventListener("mousedown", (e) => {
-  if (busy || e.button !== 0) return;
+  if (frameOn || busy || e.button !== 0) return;
   dragging = true;
   startX = curX = e.clientX;
   startY = curY = e.clientY;
@@ -125,7 +154,7 @@ window.addEventListener("mousedown", (e) => {
 });
 
 window.addEventListener("mousemove", (e) => {
-  if (!dragging) return;
+  if (frameOn || !dragging) return;
   curX = e.clientX;
   curY = e.clientY;
   paint();
@@ -138,6 +167,21 @@ window.addEventListener("mouseup", async (e) => {
   rect.style.display = "none";
   sizeLbl.style.display = "none";
   if (r.w < 8 || r.h < 8) return; // çok küçük seçim: iptal say
+  // Canli-kayit bolge secimi: kuruluysa koordinati birak, OCR yapma.
+  busy = true;
+  try {
+    const taken = await invoke<boolean>("rec_take_region", {
+      x: r.x, y: r.y, width: r.w, height: r.h,
+    });
+    if (taken) {
+      resetOverlay();
+      return;
+    }
+  } catch {
+    // Komut yoksa normal akisa devam.
+  } finally {
+    busy = false;
+  }
   // Ctrl basılıysa biriktir, overlay açık kalır
   if (e.ctrlKey || e.metaKey) {
     if (queued.length >= 12) {
@@ -184,8 +228,10 @@ async function finishQueued() {
 }
 
 window.addEventListener("keydown", async (e) => {
+  if (frameOn) return; // cerceve modunda tuslar kapali (Durdur pencereden)
   if (e.key === "Escape") {
     resetOverlay();
+    await invoke("rec_arm", { armed: false }).catch(() => {});
     await invoke("cancel_capture");
   } else if (e.key === "Enter") {
     await finishQueued();

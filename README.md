@@ -14,15 +14,40 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.6.3)
+## İndir / Download (v0.7.0)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.6.3_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.6.3_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.6.3.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.0_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.0_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.0.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.7.0)
+
+- **Yeni sekme: Canlı OCR** — ekrandan canlı kayıt alıp yazıları çıkarır: Bölge / Pencere /
+  Tam ekran seç → Kaydı Başlat → Kaydı Durdur → CSV/TXT/MD/XLSX (video hattıyla aynı
+  kare OCR + scroll tekrar eleme).
+- **Kayıt:** gömülü ffmpeg (2fps), mini Durdur penceresi (sayaçlı), bölge kaydında
+  sadece-görsel `● REC` çerçevesi, ses kaydı (dshow mikrofonlar) ve videoyu saklama seçeneği.
+- **Tablo algısı:** Tesseract TSV kelime kutularından gerçek sütunlar; geri kaydırmada
+  bulanık tekrar eleme (tek hanesi farklı satırlar korunur).
+- Kayıt sırasında ana pencere gizlenir; pencere listesi sekmeye girişte + 10 sn'de bir tazelenir.
+- Motor seçim kutusu kısaltıldı (uzun exe yolu ipucunda).
+- Kalan her şey v0.6.3 ile aynı.
+
+## What's New (v0.7.0)
+
+- **New tab: Live OCR** — record region / window / fullscreen → Start → Stop → CSV/TXT/MD/XLSX
+  (same frame-OCR + scroll-dedup pipeline as Video).
+- **Recording:** embedded ffmpeg (2fps), mini Stop window with timer, view-only `● REC`
+  frame for region capture, optional audio (dshow mics) and video keeping.
+- **Table detection** from Tesseract TSV word boxes; fuzzy de-dup on scroll-back
+  (rows with different IDs are never merged).
+- Main window hides while recording; window list refreshes on tab open + every 10s.
+- Engine picker shortened (full path moved to tooltip).
+- Everything else as in v0.6.3.
 
 ## Yenilikler (v0.6.3)
 

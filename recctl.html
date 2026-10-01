@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kayıt</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #14161c;
+      font-family: "Segoe UI", system-ui, sans-serif; user-select: none; }
+    #box { display: flex; align-items: center; gap: 10px; height: 100%;
+      padding: 0 14px; box-sizing: border-box; border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px; }
+    #dot { width: 10px; height: 10px; border-radius: 50%; background: #f87171;
+      animation: blink 1s infinite; flex: none; }
+    @keyframes blink { 50% { opacity: .25; } }
+    #time { color: #e8eaef; font-size: 17px; font-variant-numeric: tabular-nums; flex: 1; }
+    #stop { background: #f87171; color: #14161c; border: none; border-radius: 7px;
+      font-size: 13px; font-weight: 700; padding: 8px 14px; cursor: pointer; }
+    #stop:hover { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <div id="box">
+    <span id="dot"></span>
+    <span id="time">00:00</span>
+    <button id="stop">Durdur</button>
+  </div>
+  <script type="module" src="/src/recctl.ts"></script>
+</body>
+</html>

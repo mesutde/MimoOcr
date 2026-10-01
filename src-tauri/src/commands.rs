@@ -246,13 +246,13 @@ pub enum OcrSource {
     Clipboard,
 }
 
-fn overlay(app: &AppHandle) -> Option<tauri::WebviewWindow> {
+pub(crate) fn overlay(app: &AppHandle) -> Option<tauri::WebviewWindow> {
     app.get_webview_window("overlay")
 }
 
 /// Overlay penceresinin GERCEK geometrisi (fiziksel konum + olcek).
 /// Fare CSS pikseli buradan fiziksele cevrilir; varsayim yok.
-fn overlay_geometry(app: &AppHandle) -> Option<(f64, f64, f64)> {
+pub(crate) fn overlay_geometry(app: &AppHandle) -> Option<(f64, f64, f64)> {
     let ov = overlay(app)?;
     let pos = ov.outer_position().ok()?;
     let sf = ov.scale_factor().ok()?;
@@ -260,7 +260,7 @@ fn overlay_geometry(app: &AppHandle) -> Option<(f64, f64, f64)> {
 }
 
 /// Secim bitince/iptal olunca ana pencereyi tekrar gosterir.
-fn show_main(app: &AppHandle) {
+pub(crate) fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
         let _ = w.unminimize();
@@ -295,6 +295,7 @@ pub fn begin_capture(app: AppHandle, state: State<'_, AppState>) -> Result<Optio
     }
     if let Some(ov) = overlay(&app) {
         ov.show().map_err(|e| OcrError::Image(e.to_string()))?;
+        let _ = ov.set_ignore_cursor_events(false);
         ov.set_focus().map_err(|e| OcrError::Image(e.to_string()))?;
     }
     Ok(*state.last_region.lock().unwrap())
@@ -317,6 +318,7 @@ pub async fn re_capture_last(
 #[tauri::command]
 pub fn cancel_capture(app: AppHandle) -> Result<(), OcrError> {
     if let Some(ov) = overlay(&app) {
+        let _ = ov.set_ignore_cursor_events(false);
         let _ = ov.hide();
     }
     show_main(&app);

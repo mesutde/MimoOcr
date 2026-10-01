@@ -247,6 +247,7 @@ pub async fn video_extract_batch(
     langs: Option<String>,
     max_frames: Option<u32>,
     formats: Option<String>,
+    mask: Option<String>,
 ) -> Result<VideoBatchDto, String> {
     let lang = crate::commands::lang_of(&state);
     if files.is_empty() {
@@ -259,6 +260,8 @@ pub async fn video_extract_batch(
     let langs = langs.unwrap_or_else(|| "tur+eng".into());
     let max_frames = max_frames.unwrap_or(180).clamp(8, 400);
     let formats = formats.unwrap_or_else(|| "csv,txt".into());
+    // "x,y,w,h": Durdur penceresini karelerden karart (canli kayit).
+    let mask = mask.unwrap_or_default();
 
     let handle = app.clone();
     let lang_outer = lang.clone();
@@ -345,6 +348,8 @@ pub async fn video_extract_batch(
                     .arg(max_frames.to_string())
                     .arg("--formats")
                     .arg(&formats)
+                    .arg("--mask")
+                    .arg(&mask)
                     .stdout(std::process::Stdio::piped())
                     .stderr(std::process::Stdio::piped());
 
@@ -414,7 +419,7 @@ pub async fn video_extract_batch(
                         .map(|s| s.to_string_lossy().to_string())
                         .unwrap_or_else(|| "video".to_string());
                     let mut outputs = Vec::new();
-                    for ext in ["csv", "txt", "md"] {
+                    for ext in ["csv", "txt", "md", "xlsx"] {
                         let p = out_dir.join(format!("{stem}.video.{ext}"));
                         if p.is_file() {
                             outputs.push(p.display().to_string());

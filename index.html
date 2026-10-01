@@ -32,6 +32,7 @@
       <button class="tab" data-view="udf" data-i18n="tabUdf">UDF</button>
       <button class="tab" data-view="web" data-i18n="tabWeb">Web</button>
       <button class="tab" data-view="video" data-i18n="tabVideo">Video</button>
+      <button class="tab" data-view="canli" data-i18n="tabLive">Canlı OCR</button>
     </nav>
     <main id="workspace">
       <!-- YAKALA -->
@@ -253,6 +254,7 @@
               <select id="sel-vformat">
                 <option value="csv,txt" selected>CSV + TXT</option>
                 <option value="csv,txt,md">CSV + TXT + MD</option>
+                <option value="csv,txt,xlsx">CSV + TXT + XLSX</option>
                 <option value="txt">TXT</option>
                 <option value="csv">CSV</option>
               </select>
@@ -266,6 +268,76 @@
           <div id="video-status" class="status"></div>
           <pre id="video-log" spellcheck="false"></pre>
           <div id="video-outputs" class="filelist"></div>
+        </section>
+      </div>
+      <!-- CANLI OCR -->
+      <div id="view-canli" class="view" hidden>
+        <section class="doc-pane">
+          <div class="pane-title"><span data-i18n="tabLive">Canlı OCR</span><span id="live-status" class="status"></span><span id="live-timer" class="status"></span></div>
+          <p id="live-desc" data-i18n="liveDesc">Ekrandan canlı kayıt alıp yazıları çıkarır: bölge / pencere / tam ekran → ffmpeg kaydı → Tesseract → CSV/TXT/MD/XLSX.</p>
+          <div class="vgrid">
+            <div class="field">
+              <label for="sel-live-source" data-i18n="lblSource">Kaynak</label>
+              <select id="sel-live-source">
+                <option value="region" selected data-i18n="optRegion">Bölge seç</option>
+                <option value="window" data-i18n="optWindow">Pencere seç</option>
+                <option value="screen" data-i18n="optScreen">Tam ekran</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sel-live-window" data-i18n="lblWindow">Pencere</label>
+              <select id="sel-live-window"><option value="" data-i18n="optNoWindow">—</option></select>
+            </div>
+            <div class="field">
+              <label for="sel-live-mode" data-i18n="lblScroll">Scroll hızı</label>
+              <select id="sel-live-mode">
+                <option value="auto" selected data-i18n="optAuto">Otomatik</option>
+                <option value="fast" data-i18n="optFast">Hızlı scroll</option>
+                <option value="slow" data-i18n="optSlow">Yavaş scroll</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btn-live-pick" data-i18n="btnLivePick">Bölge Seç…</button>
+            <button id="btn-live-windows" data-i18n="btnLiveWindows">Pencereleri Yenile</button>
+          </div>
+          <div class="outdir-row"><span class="outdir-label" data-i18n="lblRegion">Bölge:</span><span id="live-region">…</span></div>
+          <div class="vgrid">
+            <div class="field">
+              <label for="sel-live-format" data-i18n="lblFormat">Format</label>
+              <select id="sel-live-format">
+                <option value="csv,txt,xlsx" selected>CSV + TXT + XLSX</option>
+                <option value="csv,txt">CSV + TXT</option>
+                <option value="csv,txt,md">CSV + TXT + MD</option>
+                <option value="txt">TXT</option>
+                <option value="md">Markdown</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sel-live-audio" data-i18n="lblAudio">Ses</label>
+              <select id="sel-live-audio"><option value="" data-i18n="optNoAudio">Ses yok</option></select>
+            </div>
+            <div class="field">
+              <label for="sel-live-quality" data-i18n="lblQuality">Kalite / Hız</label>
+              <select id="sel-live-quality">
+                <option value="120" data-i18n="optFastQ">Hızlı (~120 kare)</option>
+                <option value="180" selected data-i18n="optBalanced">Dengeli (~180 kare)</option>
+                <option value="280" data-i18n="optAccurate">Yüksek (~280 kare)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="chk-live-keep"> <span data-i18n="lblKeepVideo">Videoyu da sakla</span></label>
+          </div>
+          <div class="row">
+            <button id="btn-live-out" data-i18n="btnBatchOutDir">Çıktı Klasörü…</button>
+            <button id="btn-live-start" class="primary" data-i18n="btnLiveStart">Kaydı Başlat</button>
+            <button id="btn-live-stop" data-i18n="btnLiveStop">Kaydı Durdur</button>
+          </div>
+          <div class="outdir-row"><span class="outdir-label" data-i18n="lblOutDir">Kaydedilecek klasör:</span><span id="live-outdir">…</span></div>
+          <div id="live-progress-wrap"><div id="live-progress-bar"></div></div>
+          <pre id="live-log" spellcheck="false"></pre>
+          <div id="live-outputs" class="filelist"></div>
         </section>
       </div>
     </main>

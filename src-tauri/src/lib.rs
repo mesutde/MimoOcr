@@ -7,6 +7,7 @@ mod commands;
 mod batch;
 mod engine;
 mod i18n;
+mod rec;
 mod sheet;
 mod web;
 #[cfg(windows)]
@@ -159,7 +160,7 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -222,8 +223,14 @@ pub fn run() {
             } else {
                 startup_log::mark("overlay hazır");
             }
-            if let Err(e) = build_tray(app.handle()) {
-                startup_log::mark(&format!("tepsi hatası (devam): {e}"));
+            // Canli kayit mini Durdur penceresi (gizli kurulur, kayitta gosterilir).
+            if let Err(e) = rec::build_recctl(app.handle()) {
+                startup_log::mark(&format!("recctl hatası (devam): {e}"));
+                eprintln!("Recctl kurulamadı: {e}");
+            } else {
+                startup_log::mark("recctl hazır");
+            }
+            if let Err(e) = build_tray(app.handle()) {                startup_log::mark(&format!("tepsi hatası (devam): {e}"));
                 eprintln!("Tepsi kurulamadı: {e}");
             } else {
                 startup_log::mark("tepsi hazır");
@@ -279,6 +286,15 @@ pub fn run() {
             batch::ocr_path,
             batch::batch_process_files,
             batch::expand_batch_dirs,
+            rec::list_open_windows,
+            rec::list_audio_inputs,
+            rec::rec_arm,
+            rec::rec_take_region,
+            rec::rec_get_region,
+            rec::rec_start,
+            rec::rec_stop,
+            rec::rec_status,
+            rec::rec_cleanup,
             sheet::import_sheet_url,
             sheet::import_doc_url,
             web::detect_web_url,
@@ -286,11 +302,20 @@ pub fn run() {
             video::video_support_info,
             video::video_extract_batch,
         ])
-        .run(tauri::generate_context!())
-        .unwrap_or_else(|e| {
+        .build(tauri::generate_context!())
+        .map_err(|e| {
             startup_log::fatal(
                 "Mimo OCR başlatılamadı",
                 &format!("Açılış başarısız: {e}"),
             )
+        })
+        .ok();
+    if let Some(app) = app {
+        app.run(|_handle, event| {
+            // Cikis: suren kayit varsa ffmpeg'i oldur (yetim kalmasin).
+            if let tauri::RunEvent::Exit = event {
+                rec::kill_session();
+            }
         });
+    }
 }

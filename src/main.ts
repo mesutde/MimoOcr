@@ -151,6 +151,15 @@ const I18N: Record<Lang, Record<string, string>> = {
     lblScroll: "Scroll hızı", optAuto: "Otomatik", optFast: "Hızlı scroll", optSlow: "Yavaş scroll",
     lblQuality: "Kalite / Hız", optFastQ: "Hızlı (~120 kare)", optBalanced: "Dengeli (~180 kare)",
     optAccurate: "Yüksek (~280 kare)", btnVideoRun: "Videodan Çıkar",
+    tabLive: "Canlı OCR",
+    liveDesc: "Ekrandan canlı kayıt alıp yazıları çıkarır: bölge / pencere / tam ekran → ffmpeg kaydı → Tesseract → CSV/TXT/MD/XLSX.",
+    lblSource: "Kaynak", optRegion: "Bölge seç", optWindow: "Pencere seç", optScreen: "Tam ekran",
+    lblWindow: "Pencere", optNoWindow: "—", btnLivePick: "Bölge Seç…", btnLiveWindows: "Pencereleri Yenile",
+    lblRegion: "Bölge:", lblAudio: "Ses", optNoAudio: "Ses yok", lblKeepVideo: "Videoyu da sakla",
+    btnLiveStart: "Kaydı Başlat", btnLiveStop: "Kaydı Durdur",
+    liveNoWindows: "Uygun pencere bulunamadı.", liveRegionSet: "bölge hazır",
+    liveRecording: "● Kaydediliyor…", liveExtracting: "Metin çıkarılıyor…", liveDone: "Tamamlandı",
+    liveNeedOut: "Önce çıktı klasörü seçin.",
     menuReOcr: "Motor ile yeniden OCR", menuCopyImg: "📋 Kopyala (resim)", menuEdit: "✏️ Düzenle",
     menuRestore: "↩ Orijinali Geri Yükle",
     menuDelete: "🗑 Sil", menuDeleteAll: "🗑 Tümünü Sil",
@@ -212,6 +221,15 @@ const I18N: Record<Lang, Record<string, string>> = {
     lblScroll: "Scroll speed", optAuto: "Auto", optFast: "Fast scroll", optSlow: "Slow scroll",
     lblQuality: "Quality / Speed", optFastQ: "Fast (~120 frames)", optBalanced: "Balanced (~180 frames)",
     optAccurate: "High (~280 frames)", btnVideoRun: "Extract from video",
+    tabLive: "Live OCR",
+    liveDesc: "Record the screen live and extract text: region / window / fullscreen → ffmpeg capture → Tesseract → CSV/TXT/MD/XLSX.",
+    lblSource: "Source", optRegion: "Pick region", optWindow: "Pick window", optScreen: "Fullscreen",
+    lblWindow: "Window", optNoWindow: "—", btnLivePick: "Pick Region…", btnLiveWindows: "Refresh Windows",
+    lblRegion: "Region:", lblAudio: "Audio", optNoAudio: "No audio", lblKeepVideo: "Keep video too",
+    btnLiveStart: "Start Recording", btnLiveStop: "Stop Recording",
+    liveNoWindows: "No suitable window found.", liveRegionSet: "region ready",
+    liveRecording: "● Recording…", liveExtracting: "Extracting text…", liveDone: "Done",
+    liveNeedOut: "Pick an output folder first.",
     menuReOcr: "Re-OCR with engine", menuCopyImg: "📋 Copy (image)", menuEdit: "✏️ Edit",
     menuRestore: "↩ Restore Original",
     menuDelete: "🗑 Delete", menuDeleteAll: "🗑 Delete all",
@@ -304,12 +322,18 @@ const views: Record<string, HTMLElement> = {
   udf: $("view-udf"),
   web: $("view-web"),
   video: $("view-video"),
+  canli: $("view-canli"),
 };
 document.querySelectorAll<HTMLButtonElement>(".tab").forEach((b) =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
     const v = b.dataset.view!;
     for (const [k, el] of Object.entries(views)) el.hidden = k !== v;
+    // Canli sekmesi acilinca pencere/ses listelerini tazele (yeni acilan uygulamalar).
+    if (v === "canli" && !liveRecording) {
+      refreshLiveWindows();
+      refreshLiveAudio();
+    }
   }),
 );
 
@@ -340,7 +364,9 @@ function engineDetail(e: EngineInfo): string {
 function engineLabel(e: EngineInfo): string {
   const base = engineName(e) + (e.available ? "" : " " + t("engMissing"));
   const det = engineDetail(e);
-  return det ? `${base} — ${det}` : base;
+  // Yol yazma (secim kutusunu sidirir); yol ipucunda durur.
+  const isPath = /[\\/]/.test(det);
+  return det && !isPath ? `${base} - ${det}` : base;
 }
 
 async function refreshEngines() {
@@ -350,7 +376,8 @@ async function refreshEngines() {
     for (const e of engines) {
       const o = document.createElement("option");
       o.value = e.id;
-      o.textContent = engineLabel(e) + (e.detail ? ` — ${e.detail}` : "");
+      o.textContent = engineLabel(e);
+      o.title = e.detail ?? "";
       o.disabled = !e.available;
       if (e.active) o.selected = true;
       selEngine.appendChild(o);
@@ -2228,11 +2255,243 @@ btnVideoRun.addEventListener("click", async () => {
   }
 });
 
-listen<string>("video-log", (ev) => vlog(ev.payload));
+listen<string>("video-log", (ev) => {
+  if (recExtracting) rlog(ev.payload);
+  else vlog(ev.payload);
+});
 listen<Record<string, unknown>>("video-progress", (ev) => {
   const p = Number(ev.payload["percent"] ?? 0);
-  videoBar.style.width = `${Math.max(0, Math.min(100, p))}%`;
+  const w = `${Math.max(0, Math.min(100, p))}%`;
+  if (recExtracting) liveBar.style.width = w;
+  else videoBar.style.width = w;
 });
+
+// ---------------------------------------------------------------------------
+// Canli OCR sekmesi (ekran kaydi → video hatti)
+// ---------------------------------------------------------------------------
+
+interface RecWindowDto { id: string; title: string; full: string; w: number; h: number; }
+interface RecStopDto { path: string; elapsedSec: number; keptVideo: boolean; mask?: string | null; }
+
+const liveStatus = $("live-status");
+const liveTimerEl = $("live-timer");
+const liveRegionEl = $("live-region");
+const liveLog = $("live-log");
+const liveBar = $("live-progress-bar");
+const liveOutputs = $("live-outputs");
+const selLiveSource = $<HTMLSelectElement>("sel-live-source");
+const selLiveWindow = $<HTMLSelectElement>("sel-live-window");
+const selLiveMode = $<HTMLSelectElement>("sel-live-mode");
+const selLiveFormat = $<HTMLSelectElement>("sel-live-format");
+const selLiveQuality = $<HTMLSelectElement>("sel-live-quality");
+const selLiveAudio = $<HTMLSelectElement>("sel-live-audio");
+let liveOutDir = "";
+let liveRecording = false;
+let recExtracting = false;
+let liveWindowList: RecWindowDto[] = [];
+let liveTimer: number | undefined;
+let liveStartTs = 0;
+
+function fmtElapsed(s: number): string {
+  const m = Math.floor(s / 60);
+  return `${String(m).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+}
+
+function setLiveStatus(msg: string, cls: "" | "ok" | "err" = "") {
+  liveStatus.textContent = msg;
+  liveStatus.className = "status " + cls;
+}
+
+function rlog(msg: string) {
+  liveLog.textContent += msg + "\n";
+  liveLog.scrollTop = liveLog.scrollHeight;
+}
+
+function liveTick() {
+  liveTimerEl.textContent = "⏱ " + fmtElapsed((Date.now() - liveStartTs) / 1000);
+}
+
+function renderLiveRegion(r: [number, number, number, number] | null) {
+  liveRegionEl.textContent = r
+    ? `${Math.round(r[0])},${Math.round(r[1])} ${Math.round(r[2])}×${Math.round(r[3])} · ${t("liveRegionSet")}`
+    : "…";
+}
+
+async function refreshLiveWindows() {
+  try {
+    const wins = await invoke<RecWindowDto[]>("list_open_windows");
+    liveWindowList = wins;
+    const prev = selLiveWindow.value;
+    selLiveWindow.innerHTML = `<option value="">${t("optNoWindow")}</option>`;
+    for (const w of wins) {
+      const o = document.createElement("option");
+      o.value = w.id;
+      o.textContent = `${w.title} (${w.w}×${w.h})`;
+      selLiveWindow.appendChild(o);
+    }
+    if (wins.some((w) => w.id === prev)) selLiveWindow.value = prev;
+    if (!wins.length) setLiveStatus(t("liveNoWindows"), "err");
+  } catch (e) {
+    setLiveStatus(String(e), "err");
+  }
+}
+
+async function refreshLiveAudio() {
+  try {
+    const devs = await invoke<string[]>("list_audio_inputs");
+    const prev = selLiveAudio.value;
+    selLiveAudio.innerHTML = `<option value="">${t("optNoAudio")}</option>`;
+    for (const d of devs) {
+      const o = document.createElement("option");
+      o.value = d;
+      o.textContent = d;
+      selLiveAudio.appendChild(o);
+    }
+    if (devs.includes(prev)) selLiveAudio.value = prev;
+  } catch (e) {
+    setLiveStatus(String(e), "err");
+  }
+}
+
+function syncLiveSource() {
+  const k = selLiveSource.value;
+  ($("btn-live-pick") as HTMLButtonElement).disabled = k !== "region" || liveRecording;
+  selLiveWindow.disabled = k !== "window" || liveRecording;
+  if (k === "window" && !selLiveWindow.options.length) refreshLiveWindows();
+}
+selLiveSource.addEventListener("change", syncLiveSource);
+
+$<HTMLButtonElement>("btn-live-pick").addEventListener("click", async () => {
+  try {
+    await invoke("rec_arm", { armed: true });
+    await invoke("begin_capture");
+  } catch (e) {
+    await invoke("rec_arm", { armed: false }).catch(() => {});
+    setLiveStatus(String(e), "err");
+  }
+});
+
+listen<[number, number, number, number]>("rec-region", (ev) => renderLiveRegion(ev.payload));
+
+$<HTMLButtonElement>("btn-live-windows").addEventListener("click", refreshLiveWindows);
+
+$<HTMLButtonElement>("btn-live-out").addEventListener("click", async () => {
+  const sel = await open({ directory: true, multiple: false });
+  if (typeof sel === "string") {
+    liveOutDir = sel;
+    ($("live-outdir") as HTMLElement).textContent = sel;
+  }
+});
+
+$<HTMLButtonElement>("btn-live-start").addEventListener("click", async () => {
+  if (liveRecording) return;
+  const kind = selLiveSource.value;
+  if (kind === "region") {
+    const r = await invoke<[number, number, number, number] | null>("rec_get_region").catch(() => null);
+    renderLiveRegion(r);
+  }
+  try {
+    const audio = selLiveAudio.value || null;
+    const ident = kind === "window" ? selLiveWindow.value || null : null;
+    const identTitle = kind === "window"
+      ? (liveWindowList.find((w) => w.id === selLiveWindow.value)?.full ?? null)
+      : null;
+    await invoke("rec_start", { kind, ident, identTitle, audio });
+    liveRecording = true;
+    liveStartTs = Date.now();
+    liveTimerEl.textContent = "⏱ 00:00";
+    liveTimer = window.setInterval(liveTick, 1000);
+    setLiveStatus(t("liveRecording"));
+    liveOutputs.innerHTML = "";
+    liveBar.style.width = "0%";
+    ($("btn-live-start") as HTMLButtonElement).disabled = true;
+    ($("btn-live-stop") as HTMLButtonElement).disabled = false;
+    syncLiveSource();
+  } catch (e) {
+    setLiveStatus(String(e), "err");
+  }
+});
+
+$<HTMLButtonElement>("btn-live-stop").addEventListener("click", () => void liveStop());
+listen("rec-stop-request", () => { if (liveRecording) void liveStop(); });
+
+async function liveStop() {
+  if (!liveRecording) return;
+  if (!liveOutDir) {
+    const sel = await open({ directory: true, multiple: false });
+    if (typeof sel !== "string") return;
+    liveOutDir = sel;
+    ($("live-outdir") as HTMLElement).textContent = sel;
+  }
+  try {
+    const keep = ($("chk-live-keep") as HTMLInputElement).checked;
+    const dto = await invoke<RecStopDto>("rec_stop", { outDir: liveOutDir, keepVideo: keep });
+    liveRecording = false;
+    if (liveTimer !== undefined) { clearInterval(liveTimer); liveTimer = undefined; }
+    liveTimerEl.textContent = "⏱ " + fmtElapsed(dto.elapsedSec);
+    ($("btn-live-start") as HTMLButtonElement).disabled = false;
+    ($("btn-live-stop") as HTMLButtonElement).disabled = true;
+    syncLiveSource();
+    // Ayni video hatti: kare OCR + dedup + CSV/TXT/MD/XLSX.
+    setLiveStatus(t("liveExtracting"));
+    recExtracting = true;
+    try {
+      const vdto = await invoke<VideoBatchDto>("video_extract_batch", {
+        files: [dto.path],
+        outDir: liveOutDir,
+        mode: selLiveMode.value,
+        langs: selLang.value,
+        maxFrames: Number(selLiveQuality.value),
+        formats: selLiveFormat.value,
+        mask: dto.mask ?? null,
+      });
+      liveBar.style.width = "100%";
+      setLiveStatus(`${vdto.okCount}/${vdto.items.length} → ${vdto.outDir} · ${t("liveDone")}`, vdto.failCount ? "err" : "ok");
+      for (const it of vdto.items) {
+        const div = document.createElement("div");
+        if (it.ok) {
+          div.className = "fout";
+          div.textContent = "✓ " + it.name + " → " + it.outputFiles.join(" · ");
+        } else {
+          div.textContent = "✗ " + it.name + ": " + (it.error ?? "hata");
+        }
+        liveOutputs.appendChild(div);
+      }
+      if (dto.keptVideo) {
+        const div = document.createElement("div");
+        div.className = "fout";
+        div.textContent = "🎬 " + dto.path;
+        liveOutputs.appendChild(div);
+      } else {
+        await invoke("rec_cleanup", { path: dto.path }).catch(() => {});
+      }
+    } finally {
+      recExtracting = false;
+    }
+  } catch (e) {
+    setLiveStatus(String(e), "err");
+  }
+}
+
+// Sekme acilisinda listeleri doldur + yarim kalan kayit varsa goster.
+refreshLiveWindows();
+refreshLiveAudio();
+syncLiveSource();
+// Canli sekme acikken pencere listesini 10 sn'de bir sessizce tazele.
+window.setInterval(() => {
+  if (!liveRecording && currentView() === "canli") refreshLiveWindows();
+}, 10000);
+($("btn-live-stop") as HTMLButtonElement).disabled = true;
+invoke<{ recording: boolean; elapsedSec: number }>("rec_status").then((s) => {
+  if (s.recording) {
+    liveRecording = true;
+    liveStartTs = Date.now() - s.elapsedSec * 1000;
+    liveTimer = window.setInterval(liveTick, 1000);
+    setLiveStatus(t("liveRecording"));
+    ($("btn-live-start") as HTMLButtonElement).disabled = true;
+    ($("btn-live-stop") as HTMLButtonElement).disabled = false;
+  }
+}).catch(() => {});
 
 // ---------------------------------------------------------------------------
 // Tümünü temizle (tepsi menüsü) + sürükle-bırak

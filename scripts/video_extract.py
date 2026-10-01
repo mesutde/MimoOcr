@@ -13,12 +13,14 @@ Strategy:
   5. Detect table-like columns → CSV; always write TXT
 
 Memory-safe: one frame at a time, long-side scale cap, frame delete after OCR.
+XLSX needs openpyxl (bundled); if missing it is skipped with a warning.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import difflib
 import os
 import re
 import shutil
@@ -218,6 +220,7 @@ def extract_frames_adaptive(
     work: Path,
     mode: str = "auto",
     max_frames: int = 180,
+    mask: str = "",
 ) -> list[Path]:
     """Extract frames; more samples when content changes slowly (slow scroll)."""
     ff = bundled_tool("ffmpeg.exe") or which_or_none("ffmpeg") or "ffmpeg"
@@ -237,14 +240,29 @@ def extract_frames_adaptive(
         # auto: blend — scroll speed unknown; start medium
         fps = max(0.45, min(3.0, max_frames / max(dur, 1)))
 
-    # Scale down for OCR speed/memory (tables still readable at 1280)
-    vf = f"fps={fps:.3f},scale='min(1280,iw)':-2"
+    # Scale down for OCR speed/memory (tables still readable at 1280).
+    # mask: rec kontrol/cerceve karartma, "x,y,w,h;x,y,w,h" (girdi piksel uzayi).
+    pre = ""
+    if mask:
+        boxes = []
+        for part in mask.split(";"):
+            try:
+                mx, my, mw, mh = (int(float(v)) for v in part.split(",")[:4])
+            except ValueError:
+                continue
+            if mw > 0 and mh > 0:
+                boxes.append(
+                    f"drawbox=x={mx}:y={my}:w={mw}:h={mh}:color=black:t=fill"
+                )
+        if boxes:
+            pre = ",".join(boxes) + ","
+    vf = f"{pre}fps={fps:.3f},scale='min(1280,iw)':-2"
     pattern = work / "frame_%05d.png"
     r = run_extract(ff, video, vf, pattern, dur)
     if r.returncode != 0:
         # Yedek deneme: olceksiz sade filtre (filtre/olcek suphesini eler).
         _p("[warn] ölçekli çıkarma başarısız — sade filtreyle tekrar deneniyor")
-        vf_simple = f"fps={fps:.3f}"
+        vf_simple = f"{pre}fps={fps:.3f}"
         r = run_extract(ff, video, vf_simple, pattern, dur)
     if r.returncode != 0:
         err = (r.stderr or b"").decode(errors="replace")[-400:].strip()
@@ -303,6 +321,125 @@ def ocr_frame(
     return text
 
 
+def ocr_frame_words(
+    frame: Path,
+    tesseract: str,
+    lang: str,
+    tessdata: str | None,
+    timeout: int = 45,
+) -> list[dict]:
+    """Tek passta kelime kutulari (TSV): text,left,top,width,height,conf.
+
+    Kolonlar x-bosluklarindan cikarilir; duz metin OCR'un tek-bosluk
+    birlestirmesi tablo sutunlarini kaybettirir.
+    """
+    out_base = frame.with_suffix("")
+    cmd = [tesseract, str(frame), str(out_base), "-l", lang, "--psm", "6", "tsv"]
+    env = os.environ.copy()
+    if tessdata:
+        env["TESSDATA_PREFIX"] = tessdata
+        env["MIMO_TESSDATA"] = tessdata
+    kwargs = dict(stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, env=env, check=False)
+    if sys.platform == "win32":
+        kwargs["creationflags"] = 0x08000000
+    try:
+        subprocess.run(cmd, **kwargs)
+    except Exception:
+        return []
+    tsv = out_base.with_suffix(".tsv")
+    if not tsv.exists():
+        return []
+    try:
+        raw = tsv.read_text(encoding="utf-8", errors="replace")
+    finally:
+        try:
+            tsv.unlink()
+        except OSError:
+            pass
+    words: list[dict] = []
+    reader = csv.DictReader(raw.splitlines(), delimiter="\t")
+    for row in reader:
+        try:
+            if int(row.get("level", 0)) != 5:
+                continue
+        except (ValueError, TypeError):
+            continue
+        text = (row.get("text") or "").strip()
+        if not text:
+            continue
+        try:
+            words.append({
+                "text": text,
+                "left": int(row.get("left", 0)),
+                "top": int(row.get("top", 0)),
+                "width": int(row.get("width", 0)),
+                "height": int(row.get("height", 10) or 10),
+                "conf": float(row.get("conf", 0) or 0),
+            })
+        except (ValueError, TypeError):
+            continue
+    return words
+
+
+def cluster_word_lines(words: list[dict]) -> list[list[dict]]:
+    """Kelimeleri satirlara topla (dikey ortalamaya gore)."""
+    if not words:
+        return []
+    ordered = sorted(words, key=lambda w: (w["top"] + w["height"] / 2, w["left"]))
+    lines: list[list[dict]] = []
+    cur: list[dict] = []
+    for w in ordered:
+        if not cur:
+            cur = [w]
+            continue
+        ref = cur[0]
+        ref_cy = ref["top"] + ref["height"] / 2
+        h = max(ref["height"], w["height"], 1)
+        w_cy = w["top"] + w["height"] / 2
+        if abs(w_cy - ref_cy) <= 0.55 * h:
+            cur.append(w)
+        else:
+            lines.append(sorted(cur, key=lambda x: x["left"]))
+            cur = [w]
+    if cur:
+        lines.append(sorted(cur, key=lambda x: x["left"]))
+    return lines
+
+
+def words_to_cells(
+    lines: list[list[dict]],
+    page_width: int = 0,
+) -> list[list[str]]:
+    """Satir ici x-bosluklarindan hucrelere bol.
+
+    Esik: sayfa genisliginin ~%2'si (en az 15, en cok 60 px). Kelime-arasi
+    normal bosluklar (~5-12 px) birlesir, kolon bosluklari ayrilir.
+    """
+    if page_width <= 0:
+        page_width = max(
+            (w["left"] + w["width"] for line in lines for w in line),
+            default=1280,
+        )
+    gap_thr = min(60, max(15, int(page_width * 0.02)))
+    rows: list[list[str]] = []
+    for line in lines:
+        cells: list[str] = []
+        cur: list[str] = []
+        prev_end = None
+        for w in line:
+            if prev_end is not None and w["left"] - prev_end > gap_thr:
+                if cur:
+                    cells.append(" ".join(cur))
+                cur = []
+            cur.append(w["text"])
+            prev_end = w["left"] + w["width"]
+        if cur:
+            cells.append(" ".join(cur))
+        if cells:
+            rows.append(cells)
+    return rows
+
+
 def norm_line(s: str) -> str:
     s = s.replace(" ", " ")
     s = re.sub(r"\s+", " ", s).strip()
@@ -315,27 +452,74 @@ def line_key(s: str) -> str:
     return s
 
 
+def digit_signature(key: str) -> str:
+    """4+ haneli sayi gruplari (fatura/VKN ID'leri).
+
+    Ayni satirin farkli OCR okumalarinda harfler bozulsa da sayilar
+    genelde sabit kalir. Imza farkliysa FARKLI satirdir (tek hanesi
+    farkli iki fatura asla birlesmez).
+    """
+    return "|".join(re.findall(r"\d{4,}", key))
+
+
+class FuzzySeen:
+    """Geri kaydirmada ayni satirin bozuk tekrarlarini eler.
+
+    - Birebir ayni anahtar → tekrar.
+    - Sayisal imzasi ayni + benzerlik ≥0.88 → tekrar (harf hatalari).
+    - Imzasiz satirlar (baslik/metin) + benzerlik ≥0.92 → tekrar.
+    - Imzasi farkliysa her zaman AYRI satir (muhasebe guvenligi).
+    """
+
+    def __init__(self, recent: int = 400):
+        self.exact: set[str] = set()
+        self.sig_buckets: dict[str, list[str]] = {}
+        self.nosig: list[str] = []
+        self.recent = recent
+
+    def add(self, key: str) -> bool:
+        """Yeni ise True (kaydeder), tekrar ise False."""
+        if not key or key in self.exact:
+            return False if key else False
+        sig = digit_signature(key)
+        if sig:
+            bucket = self.sig_buckets.setdefault(sig, [])
+            for old in bucket[-60:]:
+                if difflib.SequenceMatcher(None, key, old).ratio() >= 0.88:
+                    self.exact.add(key)
+                    return False
+            bucket.append(key)
+        else:
+            for old in self.nosig[-self.recent:]:
+                if difflib.SequenceMatcher(None, key, old).ratio() >= 0.92:
+                    self.exact.add(key)
+                    return False
+            self.nosig.append(key)
+            if len(self.nosig) > self.recent + 100:
+                del self.nosig[:100]
+        self.exact.add(key)
+        return True
+
+
 def merge_scrolled_texts(texts: list[str]) -> str:
-    """Join frames while dropping lines that appear only because of scroll overlap."""
+    """Kareleri birlestir; scroll geri-donuslerinin bozuk tekrarlarini ele."""
     if not texts:
         return ""
-    # Collect unique non-empty lines in order of first appearance
-    seen: set[str] = set()
+    seen = FuzzySeen()
     merged: list[str] = []
     prev_keys: list[str] = []
     for text in texts:
         lines = [norm_line(x) for x in text.splitlines() if norm_line(x)]
         keys = [line_key(x) for x in lines]
-        # Skip if this frame is nearly identical to previous (scroll paused)
+        # Kare neredeyse oncekinin aynisiyla (scroll durakladi) atla.
         if keys and keys == prev_keys:
             continue
         prev_keys = keys
-        # New lines: keep order; if overlap with tail of merged, skip dups
         for line, key in zip(lines, keys):
-            if not key or key in seen:
+            if not key:
                 continue
-            seen.add(key)
-            merged.append(line)
+            if seen.add(key):
+                merged.append(line)
     return "\n".join(merged)
 
 
@@ -353,40 +537,18 @@ def looks_tabular(lines: list[str]) -> bool:
     return multi_col >= max(3, len(lines) // 4)
 
 
-def split_row(line: str) -> list[str]:
-    if "\t" in line:
-        parts = [p.strip() for p in line.split("\t") if p.strip()]
-        if len(parts) >= 2:
-            return parts
-    if " | " in line:
-        parts = [p.strip() for p in line.split(" | ") if p.strip()]
-        if len(parts) >= 2:
-            return parts
-    # 2+ spaces
-    parts = re.split(r"\s{2,}", line.strip())
-    if len(parts) >= 2:
-        return parts
-    # comma CSV-like
-    if "," in line and line.count(",") >= 1:
-        parts = [p.strip() for p in line.split(",")]
-        if len(parts) >= 2:
-            return parts
-    return [line.strip()] if line.strip() else []
-
-
-def text_to_csv_rows(lines: list[str]) -> list[list[str]]:
-    rows = []
-    for ln in lines:
-        parts = split_row(ln)
-        if parts:
-            rows.append(parts)
-    if not rows:
-        return []
-    width = max(len(r) for r in rows)
-    if width == 1:
-        # single column "table" — still export as one col CSV
-        return [[r[0]] for r in rows if r]
-    return [r + [""] * (width - len(r)) for r in rows]
+def write_xlsx(rows: list[list[str]], dest: Path) -> None:
+    try:
+        from openpyxl import Workbook
+    except ImportError as e:
+        raise RuntimeError(f"openpyxl missing: {e}") from e
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "OCR"
+    for row in rows:
+        ws.append(row)
+    wb.save(str(dest))
+    wb.close()
 
 
 def main() -> int:
@@ -396,7 +558,8 @@ def main() -> int:
     ap.add_argument("--lang", default="tur+eng")
     ap.add_argument("--mode", default="auto", choices=["auto", "fast", "slow"])
     ap.add_argument("--max-frames", type=int, default=180)
-    ap.add_argument("--formats", default="csv,txt", help="comma list: csv,txt,md")
+    ap.add_argument("--formats", default="csv,txt", help="comma list: csv,txt,md,xlsx")
+    ap.add_argument("--mask", default="", help="x,y,w,h blackout (rec control window)")
     args = ap.parse_args()
 
     video = Path(args.video)
@@ -435,7 +598,8 @@ def main() -> int:
         _p("PROGRESS 0/1")
         _p("[ffmpeg] extracting frames...")
         frames = extract_frames_adaptive(
-            video, frames_dir, mode=args.mode, max_frames=args.max_frames
+            video, frames_dir, mode=args.mode, max_frames=args.max_frames,
+            mask=args.mask,
         )
         _p(
             f"[video] duration~{video_duration_sec(video):.1f}s frames={len(frames)} mode={args.mode}"
@@ -443,27 +607,47 @@ def main() -> int:
         _p(f"PROGRESS 0/{max(1, len(frames))}")
 
         texts: list[str] = []
+        cell_rows: list[list[str]] = []
+        seen_rows = FuzzySeen()
         n = len(frames) or 1
         for i, fr in enumerate(frames, 1):
             _p(f"PROGRESS {i}/{n}")
             _p(f"[ocr] {i}/{n} {fr.name}")
-            t = ocr_frame(fr, tesseract, lang, tessdata)
+            words = ocr_frame_words(fr, tesseract, lang, tessdata)
             try:
                 fr.unlink()
             except OSError:
                 pass
-            if t.strip():
-                texts.append(t)
-                _p(f"[ok] {fr.name}: {len(t)} ch")
+            if words:
+                wlines = cluster_word_lines(words)
+                rows = words_to_cells(wlines)
+                # TXT/MD icin hucreleri tek boslukla birlestir (eski duz-metin bicimi).
+                flat = [" ".join(r) for r in rows]
+                flat = [ln for ln in flat if norm_line(ln)]
+                if flat:
+                    texts.append("\n".join(flat))
+                    _p(f"[ok] {fr.name}: {len(flat)} ln")
+                else:
+                    _p(f"[empty] {fr.name}")
+                for r in rows:
+                    rk = line_key(" ".join(r))
+                    if rk and seen_rows.add(rk):
+                        cell_rows.append(r)
             else:
-                _p(f"[empty] {fr.name}")
+                # TSV bossa yedek: duz metin (gorsel agirlikli kareler).
+                t = ocr_frame(fr, tesseract, lang, tessdata)
+                if t.strip():
+                    texts.append(t)
+                    _p(f"[ok] {fr.name}: {len(t)} ch (txt)")
+                else:
+                    _p(f"[empty] {fr.name}")
 
         _p("[merge] de-duplicating scroll overlap...")
         _p(f"PROGRESS {n}/{n}")
         merged = merge_scrolled_texts(texts)
         lines = [ln for ln in merged.splitlines() if ln.strip()]
-        tabular = looks_tabular(lines)
-        _p(f"[merge] frames_ocr={len(texts)} lines={len(lines)} tabular={tabular}")
+        tabular = looks_tabular(lines) or any(len(r) > 1 for r in cell_rows)
+        _p(f"[merge] frames_ocr={len(texts)} lines={len(lines)} rows={len(cell_rows)} tabular={tabular}")
 
         stem = video.stem
         written: list[str] = []
@@ -485,18 +669,31 @@ def main() -> int:
                 p.write_text(md, encoding="utf-8")
                 written.append(str(p))
 
+        if "csv" in formats or "xlsx" in formats:
+            # TSV kolonlari: her satir zaten hucrelerine ayrilmis + bulanik deduplu.
+            width = 0
+            for r in cell_rows:
+                width = max(width, len(r))
+            padded = [r + [""] * (width - len(r)) for r in cell_rows]
+            if not padded and lines:
+                padded = [[ln] for ln in lines]
         if "csv" in formats:
-            rows = text_to_csv_rows(lines) if tabular or lines else []
-            # Always try CSV if we have any lines — LLM users often want table-ish dump
-            if not rows and lines:
-                rows = [[ln] for ln in lines]
             p = out_dir / f"{stem}.video.csv"
             with p.open("w", encoding="utf-8-sig", newline="") as f:
                 w = csv.writer(f)
-                for row in rows:
+                for row in padded:
                     w.writerow(row)
             written.append(str(p))
-            _p(f"[csv] rows={len(rows)} tabular={tabular} -> {p}")
+            _p(f"[csv] rows={len(padded)} cols={width if cell_rows else 0} tabular={tabular} -> {p}")
+
+        if "xlsx" in formats:
+            p = out_dir / f"{stem}.video.xlsx"
+            try:
+                write_xlsx(padded, p)
+                written.append(str(p))
+                _p(f"[xlsx] rows={len(padded)} -> {p}")
+            except RuntimeError as e:
+                _p(f"[warn] xlsx atlandi: {e}")
 
         _p("[done] files: " + " | ".join(written))
         return 0

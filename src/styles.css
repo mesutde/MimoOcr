@@ -210,11 +210,11 @@ textarea:focus { border-color: rgba(91,140,255,.45); }
 }
 .batch-item .rm:hover { color: var(--red); border-color: rgba(248,113,113,.5); }
 .vgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-#video-progress-wrap, #batch-progress-wrap { height: 8px; background: var(--panel2);
+#video-progress-wrap, #batch-progress-wrap, #live-progress-wrap { height: 8px; background: var(--panel2);
   border-radius: 999px; overflow: hidden; }
-#video-progress-bar, #batch-progress-bar { height: 100%; width: 0%; background: var(--accent);
+#video-progress-bar, #batch-progress-bar, #live-progress-bar { height: 100%; width: 0%; background: var(--accent);
   transition: width .2s; }
-#video-log { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+#video-log, #live-log { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 10px 12px; font-family: "Cascadia Code", Consolas, monospace; font-size: 12px;
   line-height: 1.55; color: var(--muted); height: 150px; overflow: auto; white-space: pre-wrap; flex: none; }
 #video-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; }

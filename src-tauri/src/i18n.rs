@@ -223,6 +223,42 @@ pub fn msg(lang: &str, key: &str) -> String {
         } else {
             "Belge çıkarılamadı (kod".into()
         },
+        // Canli kayit
+        "rec_busy" => if en {
+            "Recording already in progress.".into()
+        } else {
+            "Zaten kayıt sürüyor.".into()
+        },
+        "rec_idle" => if en {
+            "No active recording.".into()
+        } else {
+            "Aktif kayıt yok.".into()
+        },
+        "rec_no_region" => if en {
+            "Pick a region first.".into()
+        } else {
+            "Önce bölge seçin.".into()
+        },
+        "rec_no_window" => if en {
+            "Pick a window first.".into()
+        } else {
+            "Önce pencere seçin.".into()
+        },
+        "rec_ffmpeg" => if en {
+            "ffmpeg not found (ffmpeg/ folder missing?)".into()
+        } else {
+            "ffmpeg bulunamadı (ffmpeg/ klasörü eksik?)".into()
+        },
+        "rec_spawn" => if en {
+            "Recorder could not be started.".into()
+        } else {
+            "Kaydedici başlatılamadı.".into()
+        },
+        "rec_nofile" => if en {
+            "Recording file was not produced.".into()
+        } else {
+            "Kayıt dosyası oluşmadı.".into()
+        },
         // Model yoneticisi
         "model_unknown" => if en {
             "Unknown model.".into()

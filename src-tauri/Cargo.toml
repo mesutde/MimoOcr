@@ -1,6 +1,6 @@
 [package]
 name = "mimo-ocr"
-version = "0.6.3"
+version = "0.7.0"
 description = "Açık kaynak, çevrimdışı, çoklu motorlu masaüstü OCR"
 edition = "2021"
 rust-version = "1.77"
@@ -40,6 +40,8 @@ windows = { version = "0.61", features = [
   "Globalization",
   "Foundation",
   "Foundation_Collections",
+  "Win32_Foundation",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 [profile.dev]
