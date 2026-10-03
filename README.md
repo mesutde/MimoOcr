@@ -19,15 +19,29 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.7.0)
+## İndir / Download (v0.7.1)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.7.0_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.7.0_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.0.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.1_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.1_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.1.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.7.1)
+
+- **Dil düzeltmeleri:** TR/EN değişiminde dosya listeleri, boş-alan yazıları ve
+  ipuçları artık anında çevriliyor; 12 sabit metin sözlüğe bağlandı (overlay +
+  kayıt penceresi dahil).
+- Kalan her şey v0.7.0 ile aynı.
+
+## What's New (v0.7.1)
+
+- **Language fixes:** file lists, empty-state texts and hints now switch instantly
+  on TR/EN change; 12 hardcoded strings moved into the dictionary (incl. overlay +
+  recorder windows).
+- Everything else as in v0.7.0.
 
 ## Yenilikler (v0.7.0)
 

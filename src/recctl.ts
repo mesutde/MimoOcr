@@ -3,6 +3,22 @@ import { emitTo } from "@tauri-apps/api/event";
 
 const timeEl = document.getElementById("time") as HTMLElement;
 
+// Mini sozluk (ana sayfadaki dille eslenir).
+function recLang(): "tr" | "en" {
+  try {
+    return localStorage.getItem("mimo-ui-lang") === "en" ? "en" : "tr";
+  } catch {
+    return "tr";
+  }
+}
+
+try {
+  const en = recLang() === "en";
+  document.title = en ? "Recording" : "Kayıt";
+  const stop = document.getElementById("stop");
+  if (stop) stop.textContent = en ? "Stop" : "Durdur";
+} catch { /* yoksay */ }
+
 function fmt(s: number): string {
   const m = Math.floor(s / 60);
   return `${String(m).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;

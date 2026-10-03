@@ -65,6 +65,11 @@ function baseHint(): string {
   return ovT("hint");
 }
 
+// Sayfa basligi arayuz diline uyar.
+try {
+  document.title = ovLang() === "en" ? "Mimo OCR — Select Region" : "Mimo OCR — Bölge Seç";
+} catch { /* yoksay */ }
+
 function norm(): Rect {
   const x = Math.min(startX, curX);
   const y = Math.min(startY, curY);

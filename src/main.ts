@@ -168,7 +168,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     optScaleNone: "Yok", optScale2: "2× Büyüt", optScale3: "3× Büyüt",
     zoomTip: "Yakınlaştırma: %{p} (sıfırlamak için çift tık)",
     engTesseract: "Tesseract (gömülü)", engWindows: "Windows OCR (sistem)", engMissing: "(yok)",
-    engLangNone: "Tesseract bulunamadı.",
+    engLangNone: "Tesseract bulunamadı.", engNoLangPack: "dil paketi yok", engLangsPrefix: "dil: ",
+    linkEngineDl: "Tesseract 5 indir ↗",
+    titleLangTr: "Türkçe", titleLangEn: "English", titleTheme: "Tema",
     uAreas: "alan", uMs: "ms", uWords: "kelime", uChars: "karakter", uRows: "satır", uCols: "sütun", uSec: "sn",
     stConf: "· güven %{p}",
     msgCopiedImg: "Resim panoya kopyalandı.", msgCopied: "Panoya kopyalandı.", msgSaved: "Kaydedildi: ",
@@ -177,6 +179,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     msgViewCut: "…[görünüm kısaltıldı: {n} karakterin tamamı kopyala/kaydet ile alınabilir]",
     msgEnterLink: "Önce geçerli bir bağlantı girin (Google Tablosu/Belgesi veya dosya).",
     msgPickUdf: "Yalnız .udf dosyası seçin.",
+    msgError: "hata",
     reqPython: "Python yok", reqScript: "betik yok", reqFfmpeg: "ffmpeg yok", reqTess: "Tesseract yok",
     reqReady: "✓ python · ffmpeg · tesseract hazır",
     filterImage: "Görsel", filterDocs: "Belgeler", filterUdf: "UYAP UDF", filterVideo: "Video",
@@ -238,7 +241,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     optScaleNone: "None", optScale2: "2× Upscale", optScale3: "3× Upscale",
     zoomTip: "Zoom: {p}% (double-click to reset)",
     engTesseract: "Tesseract (embedded)", engWindows: "Windows OCR (system)", engMissing: "(missing)",
-    engLangNone: "Tesseract not found.",
+    engLangNone: "Tesseract not found.", engNoLangPack: "no language pack", engLangsPrefix: "langs: ",
+    linkEngineDl: "Download Tesseract 5 ↗",
+    titleLangTr: "Turkish", titleLangEn: "English", titleTheme: "Theme",
     uAreas: "areas", uMs: "ms", uWords: "words", uChars: "chars", uRows: "rows", uCols: "cols", uSec: "s",
     stConf: "· {p}% conf.",
     msgCopiedImg: "Image copied.", msgCopied: "Copied.", msgSaved: "Saved: ",
@@ -247,6 +252,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     msgViewCut: "…[view truncated: full {n} chars available via copy/save]",
     msgEnterLink: "Enter a valid link first (Google Sheet/Doc or file).",
     msgPickUdf: "Please pick a .udf file.",
+    msgError: "error",
     reqPython: "no Python", reqScript: "no script", reqFfmpeg: "no ffmpeg", reqTess: "no Tesseract",
     reqReady: "✓ python · ffmpeg · tesseract ready",
     filterImage: "Images", filterDocs: "Documents", filterUdf: "UYAP UDF", filterVideo: "Video",
@@ -281,6 +287,10 @@ function applyI18n() {
     const k = el.dataset.i18nPh!;
     if (k in I18N[uiLang]) (el as HTMLInputElement).placeholder = I18N[uiLang][k];
   });
+  document.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((el) => {
+    const k = el.dataset.i18nTitle!;
+    if (k in I18N[uiLang]) el.title = I18N[uiLang][k];
+  });
   $("btn-lang-tr").classList.toggle("active", uiLang === "tr");
   $("btn-lang-en").classList.toggle("active", uiLang === "en");
   document.documentElement.lang = uiLang;
@@ -298,6 +308,24 @@ async function setUiLang(l: Lang) {
   } catch { /* varsayılan tr kalır */ }
   refreshOcrLangs();
   refreshEngines();
+  refreshDynamicTexts();
+}
+
+/// Dil degisiminde dinamik cizilmis metinleri guncelle
+/// (dosya listeleri, bos-alan yazilari, placeholder'lar).
+function refreshDynamicTexts() {
+  renderBatchFiles();
+  renderUdfFiles();
+  renderVideoFiles();
+  renderLiveRegion(lastLiveRect);
+  if (!lastImageBase64) {
+    imgWrap.innerHTML = `<span id="img-empty">${t("imgEmpty")}</span>`;
+  }
+  txtResult.placeholder = t("imgEmpty");
+  if (selLiveWindow.options.length) selLiveWindow.options[0].textContent = t("optNoWindow");
+  if (selLiveAudio.options.length) selLiveAudio.options[0].textContent = t("optNoAudio");
+  refreshVideoReq();
+  refreshEngineStatus();
 }
 
 function persistUiLang() {
@@ -356,8 +384,8 @@ function engineName(e: EngineInfo): string {
 function engineDetail(e: EngineInfo): string {
   const d = e.detail ?? "";
   if (!d || d === "bulunamadı") return "";
-  if (d === "dil paketi yok") return uiLang === "tr" ? "dil paketi yok" : "no language pack";
-  if (d.startsWith("dil: ")) return (uiLang === "tr" ? "dil: " : "langs: ") + d.slice(5);
+  if (d === "dil paketi yok") return t("engNoLangPack");
+  if (d.startsWith("dil: ")) return t("engLangsPrefix") + d.slice(5);
   return d;
 }
 
@@ -1672,12 +1700,7 @@ $<HTMLButtonElement>("btn-web-run").addEventListener("click", async () => {
       setWebStatus(tFmt("webTable", { name: `${r.name}.${r.format}`, rows: r.rows, cols: r.cols, path: r.path }), "ok");
       showWebOutput(r.path);
     } else {
-      setWebStatus(
-        uiLang === "tr"
-          ? "Önce geçerli bir bağlantı girin (Google Tablosu/Belgesi veya dosya)."
-          : "Enter a valid link first (Google Sheet/Doc or file).",
-        "err",
-      );
+      setWebStatus(t("msgEnterLink"), "err");
     }
   } catch (e) {
     setWebStatus(String(e), "err");
@@ -2183,7 +2206,7 @@ btnVideoAdd.addEventListener("click", async () => {
   const sel = await open({
     multiple: true,
     filters: [{
-      name: "Video",
+      name: t("filterVideo"),
       extensions: ["mp4", "mov", "avi", "mkv", "webm", "m4v", "wmv", "flv"],
     }],
   });
@@ -2242,7 +2265,7 @@ btnVideoRun.addEventListener("click", async () => {
         div.className = "fout";
         div.textContent = "✓ " + it.name + " → " + it.outputFiles.join(" · ");
       } else {
-        div.textContent = "✗ " + it.name + ": " + (it.error ?? "hata");
+        div.textContent = "✗ " + it.name + ": " + (it.error ?? t("msgError"));
       }
       videoOutputs.appendChild(div);
     }
@@ -2289,6 +2312,7 @@ let liveOutDir = "";
 let liveRecording = false;
 let recExtracting = false;
 let liveWindowList: RecWindowDto[] = [];
+let lastLiveRect: [number, number, number, number] | null = null;
 let liveTimer: number | undefined;
 let liveStartTs = 0;
 
@@ -2312,6 +2336,7 @@ function liveTick() {
 }
 
 function renderLiveRegion(r: [number, number, number, number] | null) {
+  lastLiveRect = r;
   liveRegionEl.textContent = r
     ? `${Math.round(r[0])},${Math.round(r[1])} ${Math.round(r[2])}×${Math.round(r[3])} · ${t("liveRegionSet")}`
     : "…";
@@ -2453,7 +2478,7 @@ async function liveStop() {
           div.className = "fout";
           div.textContent = "✓ " + it.name + " → " + it.outputFiles.join(" · ");
         } else {
-          div.textContent = "✗ " + it.name + ": " + (it.error ?? "hata");
+          div.textContent = "✗ " + it.name + ": " + (it.error ?? t("msgError"));
         }
         liveOutputs.appendChild(div);
       }
