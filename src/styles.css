@@ -40,6 +40,14 @@ body {
 #engine-warn[hidden] { display: none; }
 #engine-warn button { padding: 4px 10px; font-size: 12px; }
 #engine-dl { color: var(--accent); font-size: 12px; }
+.author-links { display: flex; align-items: center; gap: 8px; margin-left: 4px; }
+.author-link { display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px; border-radius: 999px; text-decoration: none;
+  color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1;
+  border: 1px solid transparent; transition: color .15s, background .15s, border-color .15s; }
+.author-link:hover { color: var(--text); background: var(--panel2); border-color: var(--border); }
+.author-link .ico { width: 15px; height: 15px; fill: currentColor; flex: none; }
+.author-link span { white-space: nowrap; }
 
 /* Yatay sekmeler */
 #tabs { display: flex; gap: 4px; padding: 0 14px; background: var(--panel);

@@ -299,6 +299,15 @@ function applyI18n() {
 $("btn-lang-tr").addEventListener("click", () => { setUiLang("tr"); });
 $("btn-lang-en").addEventListener("click", () => { setUiLang("en"); });
 
+// Harici bağlantılar (yazar LinkedIn/GitHub, Tesseract indir): sistem tarayıcısında aç.
+document.addEventListener("click", (ev) => {
+  const el = (ev.target as HTMLElement | null)?.closest?.("[data-open]") as HTMLElement | null;
+  if (!el) return;
+  ev.preventDefault();
+  const url = el.getAttribute("data-open") || "";
+  if (url) invoke("open_url", { url }).catch(() => {});
+});
+
 async function setUiLang(l: Lang) {
   uiLang = l;
   persistUiLang();

@@ -64,6 +64,33 @@ def extract_pdf(path: Path) -> str:
     return "\n\n".join(parts)
 
 
+def _docx_paragraphs(xml: str) -> list[str]:
+    """word/document.xml → paragraf metinleri.
+
+    Satir sonlari (`<w:br/>`, `<w:cr/>`) ve sekmeler (`<w:tab/>`) sirayla
+    korunur; her `<w:p>` bir satir olur (bos paragraflar atlanir).
+    """
+    token = re.compile(
+        r"<w:t\b[^>]*>(.*?)</w:t>|<w:tab\b[^>]*/?>|<w:br\b[^>]*/?>|<w:cr\b[^>]*/?>",
+        re.DOTALL,
+    )
+    lines: list[str] = []
+    for p in re.findall(r"<w:p\b[^>]*>(.*?)</w:p>", xml, re.DOTALL):
+        buf: list[str] = []
+        for m in token.finditer(p):
+            tok = m.group(0)
+            if tok.startswith("<w:tab"):
+                buf.append("\t")
+            elif tok.startswith("<w:br") or tok.startswith("<w:cr"):
+                buf.append("\n")
+            else:  # <w:t>...</w:t>
+                buf.append(html.unescape(m.group(1)))
+        text = "".join(buf)
+        if text.strip():
+            lines.append(text.rstrip())
+    return lines
+
+
 def extract_docx(path: Path) -> str:
     try:
         import docx  # python-docx
@@ -77,11 +104,15 @@ def extract_docx(path: Path) -> str:
                     paras.append(" | ".join(cells))
         return "\n".join(paras)
     except Exception:
-        # Fallback: raw XML text from word/document.xml
+        # python-docx yok/sorunlu: ham XML'i paragraf sinirlarini koruyarak
+        # coz (satir baslari kaybolmasin).
         with zipfile.ZipFile(path, "r") as z:
             xml = z.read("word/document.xml").decode("utf-8", errors="replace")
-        texts = re.findall(r"<w:t[^>]*>([^<]*)</w:t>", xml)
-        return " ".join(texts)
+        lines = _docx_paragraphs(xml)
+        if lines:
+            return "\n".join(lines)
+        texts = re.findall(r"<w:t\b[^>]*>([^<]*)</w:t>", xml)
+        return " ".join(html.unescape(t) for t in texts)
 
 
 def extract_xlsx(path: Path) -> str:
@@ -113,16 +144,27 @@ def extract_pptx(path: Path) -> str:
                     parts.append(shape.text)
         return "\n".join(parts)
     except Exception:
-        # raw XML fallback
+        # raw XML fallback: paragraf sinirlari korunur
         with zipfile.ZipFile(path, "r") as z:
             slides = [n for n in z.namelist() if n.startswith("ppt/slides/slide") and n.endswith(".xml")]
             parts = []
             for name in sorted(slides):
                 xml = z.read(name).decode("utf-8", errors="replace")
-                texts = re.findall(r"<a:t>([^<]*)</a:t>", xml)
-                if texts:
-                    parts.append(" ".join(texts))
-        return "\n".join(parts)
+                lines: list[str] = []
+                for p in re.findall(r"<a:p\b[^>]*>(.*?)</a:p>", xml, re.DOTALL):
+                    buf: list[str] = []
+                    for m in re.finditer(r"<a:t\b[^>]*>(.*?)</a:t>|<a:br\b[^>]*/?>", p, re.DOTALL):
+                        tok = m.group(0)
+                        if tok.startswith("<a:t"):
+                            buf.append(html.unescape(m.group(1)))
+                        else:
+                            buf.append("\n")
+                    text = "".join(buf)
+                    if text.strip():
+                        lines.append(text.rstrip())
+                if lines:
+                    parts.append("\n".join(lines))
+        return "\n\n".join(parts)
 
 
 def _strip_rtf(rtf: str) -> str:

@@ -19,15 +19,31 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.7.1)
+## İndir / Download (v0.7.2)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.7.1_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.7.1_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.1.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.2_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.2_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.2.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.7.2)
+
+- **Word (.docx) satır başları düzeltildi:** belgeler artık paragraf sınırlarını
+  koruyor; metin tek satırda akmıyor (satır sonları ve sekmeler doğru).
+- **Yazar bağlantıları:** üst çubukta LinkedIn (mesutdemirci) ve GitHub
+  (mesutde/MimoOcr) simgeleri; tıklayınca varsayılan tarayıcıda açılır.
+- Kalan her şey v0.7.1 ile aynı.
+
+## What's New (v0.7.2)
+
+- **Word (.docx) line breaks fixed:** documents now keep paragraph boundaries
+  instead of flowing on a single line (line breaks and tabs preserved).
+- **Author links:** LinkedIn (mesutdemirci) and GitHub (mesutde/MimoOcr) icons in
+  the top bar; clicking opens the default browser.
+- Everything else as in v0.7.1.
 
 ## Yenilikler (v0.7.1)
 

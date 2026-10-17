@@ -39,6 +39,40 @@ pub fn set_ui_lang(state: State<'_, AppState>, lang: String) {
     *state.ui_lang.lock().unwrap() = l.to_string();
 }
 
+/// Harici baglantiyi varsayilan tarayicida acar (yalniz http/https).
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    let u = url.trim().to_string();
+    if !(u.starts_with("https://") || u.starts_with("http://")) {
+        return Err("yalnizca http/https".into());
+    }
+    // cmd/start kabuk metakarakterlerini engelle.
+    if u
+        .chars()
+        .any(|c| matches!(c, '&' | '|' | '<' | '>' | '^' | '%' | '"' | '\r' | '\n'))
+    {
+        return Err("gecersiz url".into());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .args(["/C", "start", "", &u])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))]
+    {
+        let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        std::process::Command::new(opener)
+            .arg(&u)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Duzenleyici acilip kapandikca on yuz bildirir; acikken yakalama baslamaz.
 #[tauri::command]
 pub fn set_editor_open(state: State<'_, AppState>, open: bool) {

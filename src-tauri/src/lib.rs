@@ -269,6 +269,7 @@ pub fn run() {
             commands::save_text,
             commands::set_options,
             commands::set_ui_lang,
+            commands::open_url,
             commands::set_editor_open,
             commands::get_options,
             commands::list_models,
