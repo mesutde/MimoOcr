@@ -19,32 +19,61 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.7.3)
+## İndir / Download (v0.7.4)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.7.3_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.7.3_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.3.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.4_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.4_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.4.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
 
-## Yenilikler (v0.7.3)
+## Yenilikler (v0.7.4)
 
-- **Toplu dosya yönetimi:** "Yönet…" butonu ile açılan pencerede dosya arama,
-  tek tek veya format bazında (yanında adetleriyle) seçme/kaldırma; "Tamam"
-  deyince ana liste güncellenir.
-- **Format bazında toplu seçim:** örn. tek tıkla tüm `.jpeg` dosyalarını kaldırma.
-- **Dosya formatına göre kaydet:** açılırsa çıktılar kaynak uzantısına göre
-  `pdf/`, `docx/`, `jpeg/` gibi alt klasörlere yazılır (varsayılan kapalı).
+- **Taşınabilir pencere:** "Dosyaları yönet" penceresi başlık çubuğundan
+  tutulup sürüklenebilir.
+- **"AI'ın okuyamadıkları" butonu:** tek tıkla yalnızca agentların doğrudan
+  açamadığı formatları (PDF, Office, resim, arşiv…) seçer; `.md`, `.txt`,
+  `.csv`, `.tsv` gibi düz metinleri seçili bırakmaz.
+- **Tüm formatlar listede:** format listesi dosya listesindeki her uzantıyı
+  gösterir. `.tsv`, `.markdown`, `.jsonl`, `.ndjson` desteği eklendi.
+- **UTF-8 BOM düzeltmesi:** BOM'lu metin dosyalarında baştaki bozuk karakter
+  temizlendi.
+- **Yeni sekme: Doğrulama (hash):** dosya/klasör ekleyip **MD5, SHA-1, SHA-256,
+  CRC32** özet kodlarını üretir; sonuç **MD / CSV / TXT** olarak kaydedilir.
+  "Aynı adlı farklı uzantıları yan yana getir" seçeneği `mesut.pdf ↔ mesut.md`
+  eşler; Belge sekmesinde seçilen dosyanın SHA-256 + MD5'i anında görünür.
+- **İki klasör karşılaştırma:** A/B klasörlerindeki dosyalar ve hash'leri kıyaslanır
+  (AYNI / FARKLI / SADECE A / SADECE B); aynı dosyanın hash'i farklıysa rapora
+  **UYARI** notu eklenir.
+- **Dosyaları yönet penceresi:** format panelinde **Tümünü seç / Hiçbirini seçme**,
+  varsayılan olarak yalnız AI'ın okuyamadığı formatlar seçili; okunabilir metin
+  formatı seçilirse **uyarı notu** çıkar. Dosya listesinde sağ tık →
+  **"Dosyanın bulunduğu klasöre git"**.
+- v0.7.3'teki toplu dosya yönetimi ve "Dosya formatına göre kaydet" seçeneği
+  aynen korunuyor.
 
-## What's New (v0.7.3)
+## What's New (v0.7.4)
 
-- **Batch file manager:** a "Manage…" window with file search and per-file or
-  per-format selection (with counts); "OK" updates the main list.
-- **Format-level bulk selection:** e.g. remove every `.jpeg` file in one click.
-- **Save by file type:** when enabled, outputs go into `pdf/`, `docx/`,
-  `jpeg/` subfolders named after the source extension (off by default).
+- **Movable window:** the "Manage files" window can be dragged by its title bar.
+- **"Unreadable by AI" button:** selects only formats agents cannot open
+  directly (PDF, Office, images, archives…), leaving plain text such as `.md`,
+  `.txt`, `.csv`, `.tsv` unchecked.
+- **All formats listed:** the format panel shows every extension in the file
+  list. Added `.tsv`, `.markdown`, `.jsonl`, `.ndjson` support.
+- **UTF-8 BOM fix:** the stray leading character in BOM'd text files is removed.
+- **New tab: Verify (hash):** add files/folders and generate **MD5, SHA-1, SHA-256,
+  CRC32** checksums; save the result as **MD / CSV / TXT**. The "compare same-name
+  different-extension files" option pairs `mesut.pdf ↔ mesut.md`; the Document tab
+  shows the selected file's SHA-256 + MD5 instantly.
+- **Two-folder comparison:** compares files and hashes across folders A/B
+  (SAME / DIFFERENT / ONLY A / ONLY B); if a matching file has a different hash,
+  a **WARNING** note is added to the report.
+- **Manage files window:** format panel has **Select all / Select none**, defaults
+  to only AI-unreadable formats, and shows a **warning note** when a readable text
+  format is selected. Right-click a file → **"Open containing folder"**.
+- v0.7.3's batch file manager and "Save by file type" option are preserved.
 
 ## Yenilikler (v0.7.1)
 

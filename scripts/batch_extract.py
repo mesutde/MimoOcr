@@ -36,12 +36,13 @@ def _decode_xml_bytes(data: bytes) -> str:
 
 def read_plain(path: Path) -> str:
     data = path.read_bytes()
-    for enc in ("utf-8", "utf-8-sig", "cp1254", "latin-1"):
+    # utf-8-sig BOM'u temizler; BOM'suz UTF-8'i de sorunsuz okur.
+    for enc in ("utf-8-sig", "utf-8", "cp1254", "latin-1"):
         try:
-            return data.decode(enc)
+            return data.decode(enc).lstrip("\ufeff")
         except UnicodeDecodeError:
             continue
-    return data.decode("utf-8", errors="replace")
+    return data.decode("utf-8", errors="replace").lstrip("\ufeff")
 
 
 def extract_pdf(path: Path) -> str:
@@ -180,7 +181,8 @@ def extract_rtf(path: Path) -> str:
 
 
 PLAIN_EXTS = {
-    "txt", "md", "csv", "json", "log", "xml", "html", "htm",
+    "txt", "md", "markdown", "csv", "tsv", "json", "jsonl", "ndjson", "log",
+    "xml", "html", "htm",
     "sql", "srt", "vtt", "ini", "cfg", "yaml", "yml", "toml",
     "ps1", "bat", "cmd", "sh",
 }

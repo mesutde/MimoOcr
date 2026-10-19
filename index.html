@@ -43,6 +43,7 @@
       <button class="tab" data-view="web" data-i18n="tabWeb">Web</button>
       <button class="tab" data-view="video" data-i18n="tabVideo">Video</button>
       <button class="tab" data-view="canli" data-i18n="tabLive">Canlı OCR</button>
+      <button class="tab" data-view="hash" data-i18n="tabVerify">Doğrulama</button>
     </nav>
     <main id="workspace">
       <!-- YAKALA -->
@@ -110,6 +111,7 @@
             <button id="btn-doc-browse" data-i18n="btnBrowse">Dosya seç…</button>
             <button id="btn-doc-run" class="primary" data-i18n="btnDocRun">Belgeyi OCR'la</button>
           </div>
+          <div id="doc-hash" class="doc-hash" hidden></div>
           <textarea id="doc-result" spellcheck="false"></textarea>
           <div class="row">
             <button id="btn-doc-copy" data-i18n="btnCopy">Panoya Kopyala</button>
@@ -352,6 +354,65 @@
           <div id="live-outputs" class="filelist"></div>
         </section>
       </div>
+      <!-- DOĞRULAMA (hash) -->
+      <div id="view-hash" class="view" hidden>
+        <section class="doc-pane">
+          <div class="pane-title"><span data-i18n="tabVerify">Doğrulama</span><span id="hash-status" class="status"></span></div>
+          <div class="tip" data-i18n="hashTip">Dosyaların özet (hash) kodlarını üretir: MD5, SHA-1, SHA-256, CRC32. Belge doğrulamada SHA-256 standarttır; MD5/SHA-1 eski ve zayıftır, CRC32 yalnızca bütünlük kontrolüdür.</div>
+          <div class="row">
+            <button id="btn-hash-add" data-i18n="btnHashAdd">Dosya ekle…</button>
+            <button id="btn-hash-add-dir" data-i18n="btnHashAddDir">Klasör ekle…</button>
+            <button id="btn-hash-clear" data-i18n="btnClear">Temizle</button>
+            <label class="check"><input type="checkbox" id="chk-hash-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
+          </div>
+          <div id="hash-files" class="filelist"><span class="muted" data-i18n="batchNoFiles">Dosya yok</span></div>
+          <div class="vgrid">
+            <div class="field">
+              <label data-i18n="lblHashAlgos">Hash</label>
+              <div class="checkrow">
+                <label class="check"><input type="checkbox" id="chk-hash-sha256" checked> SHA-256</label>
+                <label class="check"><input type="checkbox" id="chk-hash-sha1"> SHA-1</label>
+                <label class="check"><input type="checkbox" id="chk-hash-md5"> MD5</label>
+                <label class="check"><input type="checkbox" id="chk-hash-crc32"> CRC32</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="sel-hash-format" data-i18n="lblFormat">Format</label>
+              <select id="sel-hash-format">
+                <option value="md" selected>Markdown</option>
+                <option value="csv">CSV</option>
+                <option value="txt">TXT</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="chk-hash-group"> <span data-i18n="lblHashGroup">Aynı adlı farklı uzantıları yan yana karşılaştır (mesut.pdf ↔ mesut.md)</span></label>
+          </div>
+          <div class="row">
+            <button id="btn-hash-run" class="primary" data-i18n="btnHashRun">Hash listesi oluştur</button>
+            <button id="btn-hash-save" data-i18n="btnHashSave">Raporu kaydet…</button>
+          </div>
+          <div id="hash-progress-wrap"><div id="hash-progress-bar"></div></div>
+          <div id="hash-results" class="filelist hash-results"></div>
+
+          <div class="pane-title" id="cmp-title"><span data-i18n="cmpTitle">İki klasörü karşılaştır</span></div>
+          <div class="tip" data-i18n="cmpTip">Aynı dosyanın iki klasördeki hash'i farklıysa dosya değişmiş demektir; rapora uyarı notu eklenir.</div>
+          <div class="row">
+            <button id="btn-cmp-a" data-i18n="btnCmpA">Klasör A seç…</button>
+            <span id="cmp-a" class="cmp-path">…</span>
+          </div>
+          <div class="row">
+            <button id="btn-cmp-b" data-i18n="btnCmpB">Klasör B seç…</button>
+            <span id="cmp-b" class="cmp-path">…</span>
+          </div>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="chk-cmp-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
+            <button id="btn-cmp-run" class="primary" data-i18n="btnCmpRun">Karşılaştır</button>
+            <button id="btn-cmp-save" data-i18n="btnCmpSave">Raporu kaydet…</button>
+          </div>
+          <div id="cmp-results" class="filelist hash-results"></div>
+        </section>
+      </div>
     </main>
     <!-- Tam ekran resim duzenleyici -->
     <div id="editor" hidden>
@@ -394,6 +455,9 @@
       <div id="editor-stage"><canvas id="editor-canvas"></canvas></div>
     </div>
   </div>
+  <div id="file-ctx" class="ctx-menu" hidden>
+    <button id="ctx-open-folder" type="button" data-i18n="ctxOpenFolder">Dosyanın bulunduğu klasöre git</button>
+  </div>
   <div id="batch-manage-modal" class="modal-backdrop" hidden>
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
@@ -406,13 +470,19 @@
           <div class="manage-toolbar">
             <button id="btn-manage-all" type="button" data-i18n="manageSelectAll">Tümünü seç</button>
             <button id="btn-manage-none" type="button" data-i18n="manageSelectNone">Hiçbirini seçme</button>
+            <button id="btn-manage-ai" type="button" data-i18n="manageAiOnly" data-i18n-title="manageAiOnlyTip">AI'ın okuyamadıkları</button>
             <span id="manage-count" class="muted"></span>
           </div>
           <div id="manage-files" class="manage-files"></div>
         </div>
         <aside class="manage-types">
           <div class="manage-types-title" data-i18n="manageTypes">Formatlar</div>
+          <div class="manage-types-actions">
+            <button id="btn-types-all" type="button" data-i18n="manageSelectAll">Tümünü seç</button>
+            <button id="btn-types-none" type="button" data-i18n="manageSelectNone">Hiçbirini seçme</button>
+          </div>
           <div id="manage-types-list"></div>
+          <div id="manage-note" class="manage-note" hidden>Uyarı: Seçili dosyalar zaten okunabilir bir metin formatında; yine de OCR çalıştırılacak.</div>
         </aside>
       </div>
       <div class="modal-foot">

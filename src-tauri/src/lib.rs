@@ -6,6 +6,7 @@ mod capture;
 mod commands;
 mod batch;
 mod engine;
+mod hash;
 mod i18n;
 mod rec;
 mod sheet;
@@ -267,6 +268,10 @@ pub fn run() {
             commands::copy_image,
             commands::clipboard_image,
             commands::save_text,
+            hash::hash_files,
+            hash::expand_all_dirs,
+            hash::compare_dirs,
+            hash::show_in_folder,
             commands::set_options,
             commands::set_ui_lang,
             commands::open_url,

@@ -33,8 +33,12 @@ pub fn is_doc_ext(ext: &str) -> bool {
             | "rtf"
             | "txt"
             | "md"
+            | "markdown"
             | "csv"
+            | "tsv"
             | "json"
+            | "jsonl"
+            | "ndjson"
             | "log"
             | "xml"
             | "html"
@@ -811,6 +815,39 @@ mod tests {
 
         let rec = expand_batch_dirs(vec![root.display().to_string()], true).unwrap();
         assert_eq!(rec.len(), 3, "rec: {rec:?}");
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn expand_dirs_includes_md_and_tsv() {
+        let root =
+            std::env::temp_dir().join(format!("mimo-batch-test-ext-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        for (name, body) in [
+            ("a.md", "# baslik"),
+            ("b.tsv", "a\tb\n1\t2"),
+            ("c.csv", "a,b"),
+            ("d.pdf", "%PDF"),
+        ] {
+            std::fs::write(root.join(name), body).unwrap();
+        }
+
+        let out = expand_batch_dirs(vec![root.display().to_string()], false).unwrap();
+        let names: Vec<String> = out
+            .iter()
+            .map(|p| {
+                std::path::Path::new(p)
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
+            .collect();
+        assert!(names.contains(&"a.md".to_string()), "md yok: {names:?}");
+        assert!(names.contains(&"b.tsv".to_string()), "tsv yok: {names:?}");
+        assert!(names.contains(&"c.csv".to_string()));
+        assert!(names.contains(&"d.pdf".to_string()));
 
         std::fs::remove_dir_all(&root).unwrap();
     }
