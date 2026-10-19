@@ -143,6 +143,12 @@ const I18N: Record<Lang, Record<string, string>> = {
     optSplitNone: "Bölme yok", optSplitCount: "Parça sayısı", optSplitSize: "MB eşiği",
     optSeparate: "Ayrı ayrı", optCombined: "Birleştir",
     btnBatchRun: "Toplu başlat", btnClear: "Temizle",
+    btnBatchManage: "Yönet…", lblGroupByExt: "Dosya formatına göre kaydet",
+    manageTitle: "Dosyaları yönet", manageSearchPh: "Dosya ara…",
+    manageSelectAll: "Tümünü seç", manageSelectNone: "Hiçbirini seçme",
+    manageTypes: "Formatlar", manageSelected: "{n} / {total} seçili",
+    manageHint: "İşaretli dosyalar kalır.", manageEmpty: "Eşleşen dosya yok.",
+    btnClose: "Kapat", btnCancel: "Vazgeç", btnOk: "Tamam",
     videoDesc: "Kaydırılan ekran kayıtlarından metin çıkarır: ffmpeg kare örnekleme → Tesseract → scroll tekrarı eleme → CSV/TXT.",
     btnVideoAdd: "Video Ekle…", videoNoFiles: "Henüz video seçilmedi.",
     webTip: "Herkese açık Google Sheets bağlantısını yapıştırın; CSV / XLSX / Markdown olarak kaydedilir.",
@@ -216,6 +222,12 @@ const I18N: Record<Lang, Record<string, string>> = {
     optSplitNone: "No split", optSplitCount: "Part count", optSplitSize: "MB threshold",
     optSeparate: "Separate", optCombined: "Combined",
     btnBatchRun: "Start batch", btnClear: "Clear",
+    btnBatchManage: "Manage…", lblGroupByExt: "Save by file type",
+    manageTitle: "Manage files", manageSearchPh: "Search files…",
+    manageSelectAll: "Select all", manageSelectNone: "Select none",
+    manageTypes: "Formats", manageSelected: "{n} / {total} selected",
+    manageHint: "Checked files are kept.", manageEmpty: "No matching files.",
+    btnClose: "Close", btnCancel: "Cancel", btnOk: "OK",
     videoDesc: "Extract text from scrolled screen recordings: ffmpeg sampling → Tesseract → scroll dedup → CSV/TXT.",
     btnVideoAdd: "Add videos…", videoNoFiles: "No videos selected.",
     webTip: "Paste a public Google Sheets link; save as CSV / XLSX / Markdown.",
@@ -1445,6 +1457,138 @@ batchFilesEl.addEventListener("click", (e) => {
   renderBatchFiles();
 });
 
+// ---------------------------------------------------------------------------
+// Toplu: dosya yönetimi (modal) — arama, tek tek / format bazında seçim
+// ---------------------------------------------------------------------------
+let manageKeep = new Set<string>();
+let manageQuery = "";
+
+function fileExtOf(p: string): string {
+  const base = shortName(p);
+  const i = base.lastIndexOf(".");
+  return i > 0 ? base.slice(i + 1).toLowerCase() : "";
+}
+
+function manageOpen() {
+  manageKeep = new Set(batchPaths);
+  manageQuery = "";
+  $<HTMLInputElement>("inp-manage-search").value = "";
+  renderManageModal();
+  $<HTMLElement>("batch-manage-modal").hidden = false;
+  $<HTMLInputElement>("inp-manage-search").focus();
+}
+
+function manageClose() {
+  $<HTMLElement>("batch-manage-modal").hidden = true;
+}
+
+function renderManageModal() {
+  const filesEl = $<HTMLElement>("manage-files");
+  const typesEl = $<HTMLElement>("manage-types-list");
+
+  const groups = new Map<string, { total: number; keep: number }>();
+  for (const p of batchPaths) {
+    const e = fileExtOf(p) || "—";
+    const g = groups.get(e) ?? { total: 0, keep: 0 };
+    g.total++;
+    if (manageKeep.has(p)) g.keep++;
+    groups.set(e, g);
+  }
+
+  typesEl.innerHTML = "";
+  [...groups.entries()]
+    .sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]))
+    .forEach(([ext, g]) => {
+      const row = document.createElement("label");
+      row.className = "type-row";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = g.keep === g.total;
+      cb.indeterminate = g.keep > 0 && g.keep < g.total;
+      cb.addEventListener("change", () => {
+        for (const p of batchPaths) {
+          if ((fileExtOf(p) || "—") !== ext) continue;
+          if (cb.checked) manageKeep.add(p);
+          else manageKeep.delete(p);
+        }
+        renderManageModal();
+      });
+      const nameEl = document.createElement("span");
+      nameEl.className = "type-name";
+      nameEl.textContent = "." + ext;
+      const cnt = document.createElement("span");
+      cnt.className = "type-count";
+      cnt.textContent = String(g.total);
+      row.append(cb, nameEl, cnt);
+      typesEl.appendChild(row);
+    });
+  if (!groups.size) {
+    typesEl.innerHTML = `<span class="muted">${t("manageEmpty")}</span>`;
+  }
+
+  filesEl.innerHTML = "";
+  const q = manageQuery.trim().toLowerCase();
+  let shown = 0;
+  for (const p of batchPaths) {
+    const nm = shortName(p);
+    if (q && !nm.toLowerCase().includes(q) && !p.toLowerCase().includes(q)) continue;
+    shown++;
+    const row = document.createElement("label");
+    row.className = "manage-file";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = manageKeep.has(p);
+    cb.addEventListener("change", () => {
+      if (cb.checked) manageKeep.add(p);
+      else manageKeep.delete(p);
+      renderManageModal();
+    });
+    const nameEl = document.createElement("span");
+    nameEl.className = "name";
+    nameEl.textContent = nm;
+    nameEl.title = p;
+    const extEl = document.createElement("span");
+    extEl.className = "ext";
+    extEl.textContent = fileExtOf(p) || "—";
+    row.append(cb, nameEl, extEl);
+    filesEl.appendChild(row);
+  }
+  if (!shown) {
+    filesEl.innerHTML = `<span class="muted">${t("manageEmpty")}</span>`;
+  }
+  $<HTMLElement>("manage-count").textContent = tFmt("manageSelected", {
+    n: manageKeep.size,
+    total: batchPaths.length,
+  });
+}
+
+$<HTMLButtonElement>("btn-batch-manage").addEventListener("click", manageOpen);
+$<HTMLButtonElement>("btn-manage-close").addEventListener("click", manageClose);
+$<HTMLButtonElement>("btn-manage-cancel").addEventListener("click", manageClose);
+$<HTMLButtonElement>("btn-manage-ok").addEventListener("click", () => {
+  batchPaths = batchPaths.filter((p) => manageKeep.has(p));
+  manageClose();
+  renderBatchFiles();
+});
+$<HTMLButtonElement>("btn-manage-all").addEventListener("click", () => {
+  manageKeep = new Set(batchPaths);
+  renderManageModal();
+});
+$<HTMLButtonElement>("btn-manage-none").addEventListener("click", () => {
+  manageKeep = new Set();
+  renderManageModal();
+});
+$<HTMLInputElement>("inp-manage-search").addEventListener("input", (e) => {
+  manageQuery = (e.target as HTMLInputElement).value;
+  renderManageModal();
+});
+$<HTMLElement>("batch-manage-modal").addEventListener("click", (e) => {
+  if (e.target === $<HTMLElement>("batch-manage-modal")) manageClose();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$<HTMLElement>("batch-manage-modal").hidden) manageClose();
+});
+
 function renderCombined(paths: string[] | undefined, old: string | null | undefined, out: HTMLElement) {
   const list = (paths && paths.length ? paths : (old ? [old] : []));
   for (const p of list) {
@@ -1537,6 +1681,7 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
       splitMode,
       splitCount: splitMode === "count" ? Math.round(splitVal) : null,
       splitMb: splitMode === "size" ? splitVal : null,
+      groupByExt: ($("chk-batch-group") as HTMLInputElement).checked,
     });
     batchBar.style.width = "100%";
     setBatchStatus(`${dto.okCount}/${dto.items.length} → ${dto.outDir}`, dto.failCount ? "err" : "ok");

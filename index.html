@@ -162,6 +162,8 @@
           <div class="row">
             <button id="btn-batch-run" class="primary" data-i18n="btnBatchRun">Toplu başlat</button>
             <button id="btn-batch-clear" data-i18n="btnClear">Temizle</button>
+            <button id="btn-batch-manage" data-i18n="btnBatchManage">Yönet…</button>
+            <label class="check"><input type="checkbox" id="chk-batch-group"> <span data-i18n="lblGroupByExt">Dosya formatına göre kaydet</span></label>
           </div>
           <div id="batch-progress-wrap"><div id="batch-progress-bar"></div></div>
           <div id="batch-outputs" class="filelist"></div>
@@ -390,6 +392,35 @@
         </span>
       </div>
       <div id="editor-stage"><canvas id="editor-canvas"></canvas></div>
+    </div>
+  </div>
+  <div id="batch-manage-modal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <strong data-i18n="manageTitle">Dosyaları yönet</strong>
+        <button id="btn-manage-close" class="rm" title="✕" data-i18n-title="btnClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="manage-main">
+          <input id="inp-manage-search" type="search" placeholder="Dosya ara…" data-i18n-ph="manageSearchPh" />
+          <div class="manage-toolbar">
+            <button id="btn-manage-all" type="button" data-i18n="manageSelectAll">Tümünü seç</button>
+            <button id="btn-manage-none" type="button" data-i18n="manageSelectNone">Hiçbirini seçme</button>
+            <span id="manage-count" class="muted"></span>
+          </div>
+          <div id="manage-files" class="manage-files"></div>
+        </div>
+        <aside class="manage-types">
+          <div class="manage-types-title" data-i18n="manageTypes">Formatlar</div>
+          <div id="manage-types-list"></div>
+        </aside>
+      </div>
+      <div class="modal-foot">
+        <span id="manage-hint" class="muted" data-i18n="manageHint">İşaretli dosyalar kalır.</span>
+        <div class="spacer"></div>
+        <button id="btn-manage-cancel" type="button" data-i18n="btnCancel">Vazgeç</button>
+        <button id="btn-manage-ok" type="button" class="primary" data-i18n="btnOk">Tamam</button>
+      </div>
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>

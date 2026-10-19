@@ -19,31 +19,32 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.7.2)
+## İndir / Download (v0.7.3)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.7.2_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.7.2_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.2.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.3_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.3_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.3.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
 
-## Yenilikler (v0.7.2)
+## Yenilikler (v0.7.3)
 
-- **Word (.docx) satır başları düzeltildi:** belgeler artık paragraf sınırlarını
-  koruyor; metin tek satırda akmıyor (satır sonları ve sekmeler doğru).
-- **Yazar bağlantıları:** üst çubukta LinkedIn (mesutdemirci) ve GitHub
-  (mesutde/MimoOcr) simgeleri; tıklayınca varsayılan tarayıcıda açılır.
-- Kalan her şey v0.7.1 ile aynı.
+- **Toplu dosya yönetimi:** "Yönet…" butonu ile açılan pencerede dosya arama,
+  tek tek veya format bazında (yanında adetleriyle) seçme/kaldırma; "Tamam"
+  deyince ana liste güncellenir.
+- **Format bazında toplu seçim:** örn. tek tıkla tüm `.jpeg` dosyalarını kaldırma.
+- **Dosya formatına göre kaydet:** açılırsa çıktılar kaynak uzantısına göre
+  `pdf/`, `docx/`, `jpeg/` gibi alt klasörlere yazılır (varsayılan kapalı).
 
-## What's New (v0.7.2)
+## What's New (v0.7.3)
 
-- **Word (.docx) line breaks fixed:** documents now keep paragraph boundaries
-  instead of flowing on a single line (line breaks and tabs preserved).
-- **Author links:** LinkedIn (mesutdemirci) and GitHub (mesutde/MimoOcr) icons in
-  the top bar; clicking opens the default browser.
-- Everything else as in v0.7.1.
+- **Batch file manager:** a "Manage…" window with file search and per-file or
+  per-format selection (with counts); "OK" updates the main list.
+- **Format-level bulk selection:** e.g. remove every `.jpeg` file in one click.
+- **Save by file type:** when enabled, outputs go into `pdf/`, `docx/`,
+  `jpeg/` subfolders named after the source extension (off by default).
 
 ## Yenilikler (v0.7.1)
 

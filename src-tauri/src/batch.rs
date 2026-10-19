@@ -436,6 +436,7 @@ pub async fn batch_process_files(
     split_mode: Option<String>,
     split_count: Option<usize>,
     split_mb: Option<f64>,
+    group_by_ext: Option<bool>,
 ) -> Result<BatchResultDto, String> {
     if files.is_empty() {
         return Err(crate::i18n::msg(
@@ -465,6 +466,8 @@ pub async fn batch_process_files(
     };
     let split_count = split_count.unwrap_or(4).clamp(2, 50);
     let split_mb = split_mb.unwrap_or(15.0).clamp(1.0, 4096.0);
+    // Kaydetme: kaynak dosyanin uzantisina gore alt klasor ac (pdf/, docx/, png/ ...).
+    let group_by_ext = group_by_ext.unwrap_or(false);
     let lang = crate::commands::lang_of(&state);
     let app_emit = app.clone();
 
@@ -553,6 +556,16 @@ pub async fn batch_process_files(
             match res {
                 Ok((kind, text)) => {
                     let chars = text.chars().count();
+                    // Ayri kipte istenirse kaynak uzantisina gore alt klasore yaz.
+                    let dest_dir = if group_by_ext && !ext.is_empty() {
+                        let d = out_dir.join(&ext);
+                        match std::fs::create_dir_all(&d) {
+                            Ok(()) => d,
+                            Err(_) => out_dir.clone(),
+                        }
+                    } else {
+                        out_dir.clone()
+                    };
                     if save_mode == "combined" && format == "pdf" {
                         // Her belge ayri kipteki yapisal ceviriyle PDF olur, sonra birlesir.
                         let tmp = std::env::temp_dir().join(format!(
@@ -597,7 +610,7 @@ pub async fn batch_process_files(
                             .file_stem()
                             .map(|s| s.to_string_lossy().to_string())
                             .unwrap_or_else(|| "cikti".to_string());
-                        let dest = out_dir.join(format!("{stem}.pdf"));
+                        let dest = dest_dir.join(format!("{stem}.pdf"));
                         // .udf → yapisal cevirici (hiza/tablo korunur); digerleri duz-metin PDF.
                         let conv = if ext == "udf" {
                             write_udf_pdf(file, &dest, &name, no_title, &lang)
@@ -620,7 +633,7 @@ pub async fn batch_process_files(
                         .file_stem()
                         .map(|s| s.to_string_lossy().to_string())
                         .unwrap_or_else(|| "cikti".to_string());
-                    let dest = out_dir.join(format!("{stem}.{format}"));
+                    let dest = dest_dir.join(format!("{stem}.{format}"));
                     let body = if format == "md" {
                         format!("# {name}\n\n```\n{text}\n```\n")
                     } else {
