@@ -16,6 +16,7 @@ mod engine_winocr;
 mod models;
 mod startup_log;
 mod video;
+mod xlsx;
 
 use std::sync::{Arc, Mutex};
 

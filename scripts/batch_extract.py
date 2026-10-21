@@ -122,6 +122,13 @@ def extract_xlsx(path: Path) -> str:
         wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
         lines = []
         for sheet in wb.worksheets:
+            # Bazi dosyalarda worksheet boyutu tum sayfa olarak yazilir
+            # (A1:XFD1048576); read_only + dimension ile milyonlarca bos
+            # hucre dolasilir. Gercek hucrelere gore boyut hesaplansin.
+            try:
+                sheet.reset_dimensions()
+            except Exception:
+                pass
             lines.append(f"## {sheet.title}")
             for row in sheet.iter_rows(values_only=True):
                 cells = ["" if c is None else str(c) for c in row]

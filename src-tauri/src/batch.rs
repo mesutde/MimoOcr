@@ -1,8 +1,9 @@
 //! Toplu is (Batch) + Belge sekmeleri.
 //!
 //! - Gorseller secili motorla OCR'lanir (tesseract / windows-ocr / mock).
-//! - Belgeler (PDF/DOCX/XLSX/PPTX/**UDF (UYAP)**/RTF/TXT/MD/CSV/JSON) icin
+//! - Belgeler (PDF/DOCX/XLSX/**XLS**/PPTX/**UDF (UYAP)**/RTF/TXT/MD/CSV/JSON) icin
 //!   `scripts/batch_extract.py` calistirilir (CREATE_NO_WINDOW, UTF-8).
+//!   Eski Excel `.xls` (BIFF) dosyalari Rust tarafinda calamine ile okunur.
 //! - Ilerleme `batch-progress`, durum `ocr-status` olaylariyla one yuze akar.
 //! - Cikti: ayri dosyalar veya birlesik TXT/MD.
 
@@ -28,6 +29,7 @@ pub fn is_doc_ext(ext: &str) -> bool {
         "pdf"
             | "docx"
             | "xlsx"
+            | "xls"
             | "pptx"
             | "udf"
             | "rtf"
@@ -398,8 +400,68 @@ fn write_udf_pdf(
     Ok(())
 }
 
-/// `scripts/batch_extract.py <dosya>` calistirir, stdout metni dondurur.
+/// Eski Excel (.xls / BIFF) dosyasini calamine ile okur.
+/// Sayfa basliklari `## ad` satiri olarak, hucreler TAB ile ayrilarak yazilir.
+fn extract_xls_text(path: &str) -> Result<String, String> {
+    use calamine::{open_workbook_auto, Data, Reader};
+
+    let mut wb = open_workbook_auto(path).map_err(|e| format!("xls: {e}"))?;
+    let mut out = String::new();
+    for (name, range) in wb.worksheets() {
+        out.push_str(&format!("## {name}\n"));
+        for row in range.rows() {
+            let cells: Vec<String> = row
+                .iter()
+                .map(|c| {
+                    if matches!(c, Data::Empty) {
+                        String::new()
+                    } else {
+                        c.to_string()
+                    }
+                })
+                .collect();
+            if cells.iter().any(|c| !c.trim().is_empty()) {
+                out.push_str(&cells.join("\t"));
+                out.push('\n');
+            }
+        }
+    }
+    if out.trim().is_empty() {
+        return Err("xls: bos calisma kitabi".into());
+    }
+    Ok(out)
+}
+
+/// Belge uzantisina gore metin cikarir. `.xls` icin calamine, `.xlsx` icin
+/// hizli akis tabanli okuyucu (`crate::xlsx`), digerleri icin Python betigi.
 fn extract_doc_text(path: &str, lang: &str) -> Result<String, OcrError> {
+    let ext = PathBuf::from(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .unwrap_or_default();
+    if ext == "xls" {
+        return extract_xls_text(path).map_err(OcrError::Image);
+    }
+    if ext == "xlsx" {
+        // openpyxl bazi dosyalarda (dimension = tum sayfa) saatlerce
+        // dolasabiliyor; hizli akis tabanli okuyucu kullanilir. Okuyucu
+        // desteklemeyen bir yapi olursa Python yedegine dusulur.
+        match crate::xlsx::extract_xlsx_text(path) {
+            Ok(text) => return Ok(text),
+            Err(err) => {
+                if let Ok(text) = run_extract_script(path, lang) {
+                    return Ok(text);
+                }
+                return Err(OcrError::Image(err));
+            }
+        }
+    }
+    run_extract_script(path, lang)
+}
+
+/// `scripts/batch_extract.py <dosya>` calistirir, stdout metnini dondurur.
+fn run_extract_script(path: &str, lang: &str) -> Result<String, OcrError> {
     let script = repo_script("batch_extract.py")
         .ok_or_else(|| OcrError::Image(crate::i18n::msg(lang, "script_missing")))?;
     let py = python_bin();
@@ -423,6 +485,40 @@ fn extract_doc_text(path: &str, lang: &str) -> Result<String, OcrError> {
         }));
     }
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
+}
+
+/// Bu boyuttan buyuk dosyalar icin "islem uzun surebilir" bilgisi gonderilir.
+const LARGE_FILE_BYTES: u64 = 20 * 1024 * 1024;
+
+fn emit_batch_log(app: &AppHandle, payload: serde_json::Value) {
+    let _ = app.emit("batch-log", payload);
+}
+
+/// Dosya bitti: ilerleme cubugunu tamamla + log satiri yayinla.
+fn finish_batch_file(
+    app: &AppHandle,
+    index: usize,
+    total: usize,
+    name: &str,
+    ok: bool,
+    chars: usize,
+    error: Option<&str>,
+    ms: u128,
+) {
+    let _ = app.emit(
+        "batch-progress",
+        serde_json::json!({"index": index, "total": total, "name": name, "done": true}),
+    );
+    let mut payload = serde_json::json!({
+        "stage": if ok { "done" } else { "error" },
+        "level": if ok { "ok" } else { "err" },
+        "index": index, "total": total, "name": name,
+        "chars": chars, "ms": ms,
+    });
+    if let Some(e) = error {
+        payload["error"] = serde_json::Value::String(e.to_string());
+    }
+    emit_batch_log(app, payload);
 }
 
 /// Toplu sekmesi: coklu gorsel + belge → TXT/MD (ayri veya birlesik).
@@ -491,15 +587,35 @@ pub async fn batch_process_files(
     );
 
     for (i, file) in files.iter().enumerate() {
+        let file_started = std::time::Instant::now();
         let p = PathBuf::from(file);
         let name = p
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_else(|| file.clone());
+        let size = p.metadata().map(|m| m.len()).unwrap_or(0);
         let _ = app_emit.emit(
             "batch-progress",
-            serde_json::json!({"index": i + 1, "total": total, "name": name, "path": file}),
+            serde_json::json!({
+                "index": i + 1, "total": total, "name": name, "path": file, "done": false
+            }),
         );
+        emit_batch_log(
+            &app_emit,
+            serde_json::json!({
+                "stage": "start", "level": "info", "index": i + 1, "total": total,
+                "name": name, "path": file, "size": size,
+            }),
+        );
+        if size >= LARGE_FILE_BYTES {
+            emit_batch_log(
+                &app_emit,
+                serde_json::json!({
+                    "stage": "large", "level": "info", "index": i + 1, "total": total,
+                    "name": name, "size": size,
+                }),
+            );
+        }
         let ext = p
             .extension()
             .and_then(|e| e.to_str())
@@ -507,19 +623,37 @@ pub async fn batch_process_files(
             .unwrap_or_default();
 
         if !p.is_file() {
+            let err = crate::i18n::msg(&lang, "file_missing");
             items.push(BatchItemResult {
                 path: file.clone(),
-                name,
+                name: name.clone(),
                 kind: "missing".into(),
                 ok: false,
-                error: Some(crate::i18n::msg(&lang, "file_missing")),
+                error: Some(err.clone()),
                 chars: 0,
             });
+            finish_batch_file(
+                &app_emit,
+                i + 1,
+                total,
+                &name,
+                false,
+                0,
+                Some(&err),
+                file_started.elapsed().as_millis(),
+            );
             continue;
         }
 
         let res: Result<(String, String), String> = if is_image_ext(&ext) {
             // Gorsel → secili motor.
+            emit_batch_log(
+                &app_emit,
+                serde_json::json!({
+                    "stage": "prepare", "level": "info", "index": i + 1, "total": total,
+                    "name": name,
+                }),
+            );
             let opts = state.options.lock().unwrap().clone();
             let file_cloned = file.clone();
             let raw = tauri::async_runtime::spawn_blocking(move || {
@@ -535,6 +669,13 @@ pub async fn batch_process_files(
             match raw {
                 Err(e) => Err(e),
                 Ok(png) => {
+                    emit_batch_log(
+                        &app_emit,
+                        serde_json::json!({
+                            "stage": "ocr", "level": "info", "index": i + 1, "total": total,
+                            "name": name,
+                        }),
+                    );
                     let opts2 = state.options.lock().unwrap().clone();
                     recognize_with(&state, &png, &opts2, &engine_id)
                         .await
@@ -543,6 +684,13 @@ pub async fn batch_process_files(
                 }
             }
         } else if is_doc_ext(&ext) {
+            emit_batch_log(
+                &app_emit,
+                serde_json::json!({
+                    "stage": "extract", "level": "info", "index": i + 1, "total": total,
+                    "name": name,
+                }),
+            );
             let file_cloned = file.clone();
             let lang2 = lang.clone();
             tauri::async_runtime::spawn_blocking(move || extract_doc_text(&file_cloned, &lang2))
@@ -560,6 +708,13 @@ pub async fn batch_process_files(
             match res {
                 Ok((kind, text)) => {
                     let chars = text.chars().count();
+                    emit_batch_log(
+                        &app_emit,
+                        serde_json::json!({
+                            "stage": "save", "level": "info", "index": i + 1, "total": total,
+                            "name": name,
+                        }),
+                    );
                     // Ayri kipte istenirse kaynak uzantisina gore alt klasore yaz.
                     let dest_dir = if group_by_ext && !ext.is_empty() {
                         let d = out_dir.join(&ext);
@@ -581,9 +736,13 @@ pub async fn batch_process_files(
                         } else {
                             write_pdf_file(&tmp, &name, &text, no_title, &lang)
                         };
+                        let ms = file_started.elapsed().as_millis();
                         match conv {
                             Ok(()) => {
                                 pdf_parts.push(tmp);
+                                finish_batch_file(
+                                    &app_emit, i + 1, total, &name, true, chars, None, ms,
+                                );
                                 items.push(BatchItemResult {
                                     path: file.clone(),
                                     name,
@@ -595,6 +754,9 @@ pub async fn batch_process_files(
                             }
                             Err(e) => {
                                 let _ = std::fs::remove_file(&tmp);
+                                finish_batch_file(
+                                    &app_emit, i + 1, total, &name, false, chars, Some(&e), ms,
+                                );
                                 items.push(BatchItemResult {
                                     path: file.clone(),
                                     name,
@@ -622,6 +784,10 @@ pub async fn batch_process_files(
                             write_pdf_file(&dest, &name, &text, no_title, &lang)
                         };
                         if let Err(e) = conv {
+                            finish_batch_file(
+                                &app_emit, i + 1, total, &name, false, chars, Some(&e),
+                                file_started.elapsed().as_millis(),
+                            );
                             items.push(BatchItemResult {
                                 path: file.clone(),
                                 name,
@@ -644,17 +810,26 @@ pub async fn batch_process_files(
                         text.clone()
                     };
                     if let Err(e) = std::fs::write(&dest, body) {
+                        let err = format!("{}: {e}", crate::i18n::msg(&lang, "write_fail"));
+                        finish_batch_file(
+                            &app_emit, i + 1, total, &name, false, chars, Some(&err),
+                            file_started.elapsed().as_millis(),
+                        );
                         items.push(BatchItemResult {
                             path: file.clone(),
                             name,
                             kind,
                             ok: false,
-                            error: Some(format!("{}: {e}", crate::i18n::msg(&lang, "write_fail"))),
+                            error: Some(err),
                             chars,
                         });
                         continue;
                     }
                 }
+                finish_batch_file(
+                    &app_emit, i + 1, total, &name, true, chars, None,
+                    file_started.elapsed().as_millis(),
+                );
                 items.push(BatchItemResult {
                     path: file.clone(),
                     name,
@@ -665,6 +840,10 @@ pub async fn batch_process_files(
                 });
             }
             Err(e) => {
+                finish_batch_file(
+                    &app_emit, i + 1, total, &name, false, 0, Some(&e),
+                    file_started.elapsed().as_millis(),
+                );
                 items.push(BatchItemResult {
                     path: file.clone(),
                     name,
@@ -762,6 +941,13 @@ pub async fn batch_process_files(
         combined_paths,
         items,
     };
+    emit_batch_log(
+        &app_emit,
+        serde_json::json!({
+            "stage": "summary", "level": "info",
+            "ok": dto.ok_count, "fail": dto.fail_count, "total": dto.items.len(),
+        }),
+    );
     let _ = app_emit.emit(
         "ocr-status",
         serde_json::json!({"state": "ready", "ok": dto.ok_count, "total": dto.items.len()}),
@@ -771,7 +957,14 @@ pub async fn batch_process_files(
 
 #[cfg(test)]
 mod tests {
-    use super::{chunk_indices_count, chunk_indices_size, expand_batch_dirs};
+    use super::{chunk_indices_count, chunk_indices_size, expand_batch_dirs, is_doc_ext};
+
+    #[test]
+    fn doc_ext_accepts_legacy_xls() {
+        assert!(is_doc_ext("xls"));
+        assert!(is_doc_ext("xlsx"));
+        assert!(!is_doc_ext("png"));
+    }
 
     #[test]
     fn count_split_even() {

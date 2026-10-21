@@ -19,15 +19,46 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.7.4)
+## İndir / Download (v0.7.5)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.7.4_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.7.4_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.4.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.5_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.5_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.5.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.7.5)
+
+- **Eski Excel (.xls) desteği:** Belge ve Toplu sekmeleri artık `.xls` (BIFF)
+  dosyalarını da okur (`XLSX/XLS`).
+- **Hızlı XLSX okuyucu + donma düzeltmesi:** Excel dosyaları artık akış
+  (streaming) tabanlı okuyucuyla saniyeler içinde çıkarılır. Sayfa boyutu tüm
+  sayfa olarak işaretlenmiş (`A1:XFD1048576`) dosyalarda openpyxl'in saatlerce
+  dönmesine yol açan hata giderildi (ör. 15 MB / 13 sayfa dosya ~2 sn).
+- **Toplu işlem aşama günlüğü:** İlerlemenin donmadığını gösteren canlı günlük —
+  hangi dosya, hangi aşamada (metin çıkarılıyor / OCR / kaydediliyor) ve geçen
+  süre; ≥20 MB dosyalar için "büyük dosya" uyarısı.
+- **Hash sonuçları penceresi:** Doğrulama sonuçları küçük alan yerine modal
+  pencerede gösterilir; kapatıldıktan sonra **"Sonuçları göster"** ile yeniden
+  açılabilir.
+- v0.7.4 özellikleri aynen korunuyor.
+
+## What's New (v0.7.5)
+
+- **Legacy Excel (.xls) support:** Document and Batch tabs now read `.xls`
+  (BIFF) files too (`XLSX/XLS`).
+- **Fast XLSX reader + hang fix:** Excel files are now extracted in seconds by
+  a streaming reader. Fixed the bug where openpyxl spun for hours on files whose
+  sheet dimension is marked as the whole sheet (`A1:XFD1048576`) — e.g. a
+  15 MB / 13-sheet file now takes ~2 s.
+- **Batch stage log:** live log showing which file is being processed and at
+  which stage (extracting text / OCR / saving) with elapsed time; a "large file"
+  warning for files ≥20 MB.
+- **Hash results window:** verification results are shown in a modal window
+  instead of a small area; after closing, reopen with **"Show results"**.
+- v0.7.4 features are preserved.
 
 ## Yenilikler (v0.7.4)
 
@@ -325,8 +356,8 @@ Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All
 
 ## Kurulum / Install (Windows)
 
-**NSIS:** `Mimo.OCR_0.5.0_x64-setup.exe` — çift tıkla, kur, aç. / Double-click, install, open.
-**MSI:** `Mimo.OCR_0.5.0_x64_en-US.msi` — kurumsal dağıtım / enterprise deployment.
+**NSIS:** `Mimo.OCR_0.7.5_x64-setup.exe` — çift tıkla, kur, aç. / Double-click, install, open.
+**MSI:** `Mimo.OCR_0.7.5_x64_en-US.msi` — kurumsal dağıtım / enterprise deployment.
 **Portable:** ZIP'i aç, `mimo-ocr.exe` çalıştır. Yanında `tessdata/`, `tesseract-runtime/`, `ffmpeg/`, `models.json`, `scripts/` gelir. / Unzip, run `mimo-ocr.exe`.
 
 > Not / Note: Video sekmesi **kurulumla gelen Python'u** kullanır (gerekirse `MIMO_PYTHON` ile başka yol verilebilir). Toplu Office/PDF için ek kuruluma gerek yoktur (reportlab/pypdf/openpyxl gömülü). / The Video tab uses the **bundled Python** (`MIMO_PYTHON` overrides). No extra installs needed.

@@ -131,13 +131,23 @@ const I18N: Record<Lang, Record<string, string>> = {
     paneSource: "Kaynak", paneText: "Metin",
     imgEmpty: "Henüz görsel yok. Bölge yakalayın veya görsel açın; önizlemeye sağ tıklayarak başka motorla yeniden OCR yapabilirsiniz.",
     btnCopy: "Panoya Kopyala", btnSave: "Farklı Kaydet…",
-    docTip: "Destek: görseller (OCR) · PDF · DOCX · XLSX · PPTX · UDF (UYAP) · TXT/MD",
+    docTip: "Destek: görseller (OCR) · PDF · DOCX · XLSX/XLS · PPTX · UDF (UYAP) · TXT/MD",
     btnBrowse: "Dosya seç…", btnDocRun: "Belgeyi OCR'la",
     udfTip: "UYAP Doküman Formatı (.udf): ZIP + content.xml. Metin çıkarılır; imza doğrulanmaz, gömülü resimler ayrı OCR'a girmez.",
     btnUdfRun: "UDF'leri Dönüştür", btnUdfAdd: "UDF Ekle…", udfNoFiles: "UDF dosyası yok",
     lblOutDir: "Kaydedilecek klasör:", chkPdfTitle: "PDF'e dosya adını başlık olarak yaz",
     btnBatchAdd: "Dosya ekle…", btnBatchAddDir: "Klasör ekle…", btnBatchOutDir: "Çıktı klasörü…",
     batchNoFiles: "Dosya yok", batchDirEmpty: "Klasörde desteklenen dosya yok.", batchDirAdded: "klasörden eklendi",
+    batchLogStarted: "Toplu işlem başladı — {n} dosya",
+    batchLogLarge: "büyük dosya — işlem biraz sürebilir",
+    batchLogPreparing: "görsel hazırlanıyor",
+    batchLogOcr: "OCR çalışıyor",
+    batchLogExtracting: "metin çıkarılıyor",
+    batchLogSaving: "kaydediliyor",
+    batchLogDone: "tamamlandı",
+    batchLogNext: "sonraki dosyaya geçiliyor",
+    batchLogSummary: "Bitti: {ok}/{total} başarılı, {fail} hata",
+    lblChars: "karakter",
     lblFormat: "Format", lblSaveMode: "Kayıt", lblRecursive: "Alt klasörleri de ara",
     lblSplit: "Bölme", lblSplitValue: "Parça / MB",
     optSplitNone: "Bölme yok", optSplitCount: "Parça sayısı", optSplitSize: "MB eşiği",
@@ -157,12 +167,13 @@ const I18N: Record<Lang, Record<string, string>> = {
     hashTip: "Dosyaların özet (hash) kodlarını üretir: MD5, SHA-1, SHA-256, CRC32. Belge doğrulamada SHA-256 standarttır; MD5/SHA-1 eski ve zayıftır, CRC32 yalnızca bütünlük kontrolüdür.",
     btnHashAdd: "Dosya ekle…", btnHashAddDir: "Klasör ekle…", lblHashAlgos: "Hash",
     lblHashGroup: "Aynı adlı farklı uzantıları yan yana karşılaştır (mesut.pdf ↔ mesut.md)",
-    btnHashRun: "Hash listesi oluştur", btnHashSave: "Raporu kaydet…",
+    btnHashRun: "Hash listesi oluştur", btnHashSave: "Raporu kaydet…", btnHashShow: "Sonuçları göster",
     cmpTitle: "İki klasörü karşılaştır",
     cmpTip: "Aynı dosyanın iki klasördeki hash'i farklıysa dosya değişmiş demektir; rapora uyarı notu eklenir.",
     btnCmpA: "Klasör A seç…", btnCmpB: "Klasör B seç…", btnCmpRun: "Karşılaştır", btnCmpSave: "Raporu kaydet…",
     hashComputing: "Hash hesaplanıyor…", hashNeedAlgo: "En az bir hash algoritması seçin.",
     hashNeedRun: "Önce hash listesini oluşturun.", cmpNeedBoth: "İki klasör seçin.",
+    hashModalTitle: "Hash sonuçları",
     hashReportTitle: "Hash Raporu", cmpReportTitle: "Klasör Karşılaştırma Raporu",
     lblGroup: "Grup", lblFile: "Dosya", lblSize: "Boyut", lblPath: "Yol", lblStatus: "Durum",
     colWarning: "Uyarı", warnHashDiffRow: "HASH FARKLI",
@@ -229,13 +240,23 @@ const I18N: Record<Lang, Record<string, string>> = {
     paneSource: "Source", paneText: "Text",
     imgEmpty: "No image yet. Capture a region or open an image; right-click the preview to re-OCR with another engine.",
     btnCopy: "Copy", btnSave: "Save as…",
-    docTip: "Supported: images (OCR) · PDF · DOCX · XLSX · PPTX · UDF (UYAP) · TXT/MD",
+    docTip: "Supported: images (OCR) · PDF · DOCX · XLSX/XLS · PPTX · UDF (UYAP) · TXT/MD",
     btnBrowse: "Browse…", btnDocRun: "OCR document",
     udfTip: "UYAP Document Format (.udf): ZIP + content.xml. Text is extracted; signatures are not verified, embedded images are not OCR'd separately.",
     btnUdfRun: "Convert UDFs", btnUdfAdd: "Add UDFs…", udfNoFiles: "No UDF files",
     lblOutDir: "Save folder:", chkPdfTitle: "Write file name as PDF title",
     btnBatchAdd: "Add files…", btnBatchAddDir: "Add folder…", btnBatchOutDir: "Output folder…",
     batchNoFiles: "No files", batchDirEmpty: "No supported files in folder.", batchDirAdded: "added from folder",
+    batchLogStarted: "Batch started — {n} file(s)",
+    batchLogLarge: "large file — this may take a while",
+    batchLogPreparing: "preparing image",
+    batchLogOcr: "running OCR",
+    batchLogExtracting: "extracting text",
+    batchLogSaving: "saving",
+    batchLogDone: "done",
+    batchLogNext: "moving to next file",
+    batchLogSummary: "Finished: {ok}/{total} succeeded, {fail} failed",
+    lblChars: "chars",
     lblFormat: "Format", lblSaveMode: "Save", lblRecursive: "Include subfolders",
     lblSplit: "Split", lblSplitValue: "Parts / MB",
     optSplitNone: "No split", optSplitCount: "Part count", optSplitSize: "MB threshold",
@@ -255,12 +276,13 @@ const I18N: Record<Lang, Record<string, string>> = {
     hashTip: "Generates checksums (hashes) for files: MD5, SHA-1, SHA-256, CRC32. SHA-256 is the standard for document verification; MD5/SHA-1 are legacy/weak, CRC32 is integrity-only.",
     btnHashAdd: "Add files…", btnHashAddDir: "Add folder…", lblHashAlgos: "Hash",
     lblHashGroup: "Compare same-name different-extension files side by side (mesut.pdf ↔ mesut.md)",
-    btnHashRun: "Build hash list", btnHashSave: "Save report…",
+    btnHashRun: "Build hash list", btnHashSave: "Save report…", btnHashShow: "Show results",
     cmpTitle: "Compare two folders",
     cmpTip: "If the same file has different hashes in the two folders, it has changed; a warning note is added to the report.",
     btnCmpA: "Choose folder A…", btnCmpB: "Choose folder B…", btnCmpRun: "Compare", btnCmpSave: "Save report…",
     hashComputing: "Computing hash…", hashNeedAlgo: "Select at least one hash algorithm.",
     hashNeedRun: "Build the hash list first.", cmpNeedBoth: "Choose both folders.",
+    hashModalTitle: "Hash results",
     hashReportTitle: "Hash Report", cmpReportTitle: "Folder Comparison Report",
     lblGroup: "Group", lblFile: "File", lblSize: "Size", lblPath: "Path", lblStatus: "Status",
     colWarning: "Warning", warnHashDiffRow: "HASH DIFFERS",
@@ -1301,7 +1323,7 @@ function docFilter() {
     filters: [{
       name: t("filterDocs"),
       extensions: ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp", "gif",
-        "pdf", "docx", "xlsx", "pptx", "udf", "odt", "ods", "odp", "epub",
+        "pdf", "docx", "xlsx", "xls", "pptx", "udf", "odt", "ods", "odp", "epub",
         "rtf", "txt", "md", "markdown", "csv", "tsv", "json", "jsonl", "ndjson",
         "log", "xml", "html", "htm",
         "sql", "srt", "vtt", "ini", "cfg", "yaml", "yml", "toml",
@@ -1487,6 +1509,52 @@ const selBatchMode = $<HTMLSelectElement>("sel-batch-mode");
 let batchPaths: string[] = [];
 let batchOutDir = "";
 let batchBusy = false;
+
+const batchLogEl = $<HTMLElement>("batch-log");
+const batchCurrentEl = $<HTMLElement>("batch-current");
+let batchTicker: number | null = null;
+let batchTickerStart = 0;
+
+function stopBatchTicker() {
+  if (batchTicker !== null) {
+    window.clearInterval(batchTicker);
+    batchTicker = null;
+  }
+}
+
+function startBatchTicker(label: string) {
+  stopBatchTicker();
+  batchTickerStart = Date.now();
+  const paint = () => {
+    const secs = Math.floor((Date.now() - batchTickerStart) / 1000);
+    batchCurrentEl.textContent = `${label} · ${secs}s`;
+  };
+  paint();
+  batchTicker = window.setInterval(paint, 1000);
+}
+
+function appendBatchLog(text: string, cls: "" | "ok" | "err" | "warn" = "") {
+  const line = document.createElement("div");
+  line.className = "log-line" + (cls ? ` ${cls}` : "");
+  line.textContent = text;
+  batchLogEl.appendChild(line);
+  while (batchLogEl.childElementCount > 500) batchLogEl.firstElementChild?.remove();
+  batchLogEl.scrollTop = batchLogEl.scrollHeight;
+}
+
+function clearBatchLog() {
+  stopBatchTicker();
+  batchLogEl.innerHTML = "";
+  batchCurrentEl.textContent = "";
+}
+
+function batchStageLabel(stage: string): string {
+  if (stage === "prepare") return t("batchLogPreparing");
+  if (stage === "ocr") return t("batchLogOcr");
+  if (stage === "extract") return t("batchLogExtracting");
+  if (stage === "save") return t("batchLogSaving");
+  return "";
+}
 
 function setBatchStatus(msg: string, cls: "" | "ok" | "err" = "") {
   batchStatus.textContent = msg;
@@ -1830,6 +1898,7 @@ $<HTMLButtonElement>("btn-batch-clear").addEventListener("click", () => {
   batchPaths = [];
   batchOutputs.innerHTML = "";
   batchBar.style.width = "0%";
+  clearBatchLog();
   setBatchStatus("");
   renderBatchFiles();
 });
@@ -1846,6 +1915,8 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
   ($<HTMLButtonElement>("btn-batch-run")).disabled = true;
   batchOutputs.innerHTML = "";
   batchBar.style.width = "0%";
+  clearBatchLog();
+  appendBatchLog(tFmt("batchLogStarted", { n: batchPaths.length }), "");
   try {
     const splitMode = ($("sel-batch-split") as HTMLSelectElement).value;
     const splitVal = Number(($("inp-batch-split") as HTMLInputElement).value);
@@ -1873,9 +1944,70 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
     }
   } catch (e) {
     setBatchStatus(String(e), "err");
+    appendBatchLog("✗ " + String(e), "err");
   } finally {
     batchBusy = false;
+    stopBatchTicker();
     ($<HTMLButtonElement>("btn-batch-run")).disabled = false;
+  }
+});
+
+interface BatchLogPayload {
+  stage?: string;
+  level?: string;
+  index?: number;
+  total?: number;
+  name?: string;
+  size?: number;
+  chars?: number;
+  ms?: number;
+  error?: string;
+  ok?: number;
+  fail?: number;
+}
+
+listen<BatchLogPayload>("batch-log", (ev) => {
+  if (!batchBusy) return;
+  const p = ev.payload;
+  const idx = Number(p.index ?? 0);
+  const tot = Number(p.total ?? 0);
+  const name = p.name ?? "";
+  const prefix = tot ? `${idx}/${tot}` : "";
+  const stage = p.stage ?? "";
+  if (stage === "start") {
+    appendBatchLog(`▶ ${prefix} ${name}`, "");
+    startBatchTicker(`${prefix} ${name}`);
+  } else if (stage === "large") {
+    appendBatchLog(`⏳ ${name} — ${humanSize(Number(p.size ?? 0))} · ${t("batchLogLarge")}`, "warn");
+  } else if (stage === "summary") {
+    appendBatchLog(
+      tFmt("batchLogSummary", {
+        ok: Number(p.ok ?? 0),
+        total: Number(p.total ?? 0),
+        fail: Number(p.fail ?? 0),
+      }),
+      "ok",
+    );
+    stopBatchTicker();
+    batchCurrentEl.textContent = "";
+  } else if (stage === "done") {
+    const secs = (Number(p.ms ?? 0) / 1000).toFixed(1);
+    appendBatchLog(
+      `✓ ${name} — ${t("batchLogDone")} (${Number(p.chars ?? 0)} ${t("lblChars")}, ${secs}s)`,
+      "ok",
+    );
+    stopBatchTicker();
+    batchCurrentEl.textContent = "";
+  } else if (stage === "error") {
+    appendBatchLog(`✗ ${name} — ${p.error ?? ""} · ${t("batchLogNext")}`, "err");
+    stopBatchTicker();
+    batchCurrentEl.textContent = "";
+  } else {
+    const label = batchStageLabel(stage);
+    if (label) {
+      appendBatchLog(`… ${name} — ${label}`, "");
+      startBatchTicker(`${name} — ${label}`);
+    }
   }
 });
 
@@ -1883,7 +2015,8 @@ listen<Record<string, unknown>>("batch-progress", (ev) => {
   const p = ev.payload;
   const i = Number(p["index"] ?? 0);
   const n = Number(p["total"] ?? 0);
-  const pct = n > 0 ? `${(i / n) * 100}%` : "0%";
+  const done = p["done"] !== false;
+  const pct = n > 0 ? `${Math.max(0, ((i - (done ? 0 : 1)) / n) * 100)}%` : "0%";
   if (udfBusy) udfBar.style.width = pct;
   else batchBar.style.width = pct;
 });
@@ -1919,6 +2052,8 @@ interface CompareResult {
 const HASH_ORDER = ["sha256", "sha1", "md5", "crc32", "sha512"];
 const hashFilesEl = $<HTMLElement>("hash-files");
 const hashResultsEl = $<HTMLElement>("hash-results");
+const hashModal = $<HTMLElement>("hash-modal");
+const hashModalInfo = $<HTMLElement>("hash-modal-info");
 const hashStatus = $<HTMLElement>("hash-status");
 const hashBar = $<HTMLElement>("hash-progress-bar");
 const cmpResultsEl = $<HTMLElement>("cmp-results");
@@ -2052,6 +2187,14 @@ function fmtHashes(h: FileHash, algos: string[]): string {
     .join("  ·  ");
 }
 
+function hashModalOpen() {
+  hashModal.hidden = false;
+}
+
+function hashModalClose() {
+  hashModal.hidden = true;
+}
+
 function renderHashResults(rows: FileHash[]) {
   hashResultsEl.innerHTML = "";
   const grouping = $<HTMLInputElement>("chk-hash-group").checked;
@@ -2059,6 +2202,7 @@ function renderHashResults(rows: FileHash[]) {
   head.className = "muted";
   head.textContent = `${rows.length} ${t("lblFile").toLowerCase()} · ${orderedKeys(hashAlgosUsed).map(hashAlgoLabel).join(", ")}`;
   hashResultsEl.appendChild(head);
+  hashModalInfo.textContent = head.textContent;
 
   if (grouping) {
     const groups = new Map<string, FileHash[]>();
@@ -2188,7 +2332,9 @@ async function runHashList() {
   }
   hashBusy = true;
   $<HTMLButtonElement>("btn-hash-run").disabled = true;
-  hashResultsEl.innerHTML = "";
+  hashResultsEl.innerHTML = `<span class="muted">${t("hashComputing")}</span>`;
+  hashModalInfo.textContent = "";
+  hashModalOpen();
   hashBar.style.width = "0%";
   setHashStatus(t("working"));
   try {
@@ -2199,6 +2345,11 @@ async function runHashList() {
     const failed = res.filter((r) => r.error).length;
     setHashStatus(`${res.length - failed}/${res.length}`, failed ? "err" : "ok");
   } catch (e) {
+    hashResultsEl.innerHTML = "";
+    const err = document.createElement("div");
+    err.className = "hrow diff";
+    err.textContent = String(e);
+    hashResultsEl.appendChild(err);
     setHashStatus(String(e), "err");
   } finally {
     hashBusy = false;
@@ -2209,7 +2360,7 @@ async function runHashList() {
 
 $<HTMLButtonElement>("btn-hash-run").addEventListener("click", runHashList);
 
-$<HTMLButtonElement>("btn-hash-save").addEventListener("click", async () => {
+async function saveHashReport() {
   if (!hashRows.length) {
     setHashStatus(t("hashNeedRun"), "err");
     return;
@@ -2226,6 +2377,26 @@ $<HTMLButtonElement>("btn-hash-save").addEventListener("click", async () => {
   } catch (e) {
     setHashStatus(String(e), "err");
   }
+}
+
+$<HTMLButtonElement>("btn-hash-save").addEventListener("click", saveHashReport);
+$<HTMLButtonElement>("btn-hash-modal-save").addEventListener("click", saveHashReport);
+$<HTMLButtonElement>("btn-hash-show").addEventListener("click", () => {
+  if (!hashRows.length) {
+    setHashStatus(t("hashNeedRun"), "err");
+    return;
+  }
+  renderHashResults(hashRows);
+  hashModalOpen();
+});
+
+$<HTMLButtonElement>("btn-hash-modal-close").addEventListener("click", hashModalClose);
+$<HTMLButtonElement>("btn-hash-modal-ok").addEventListener("click", hashModalClose);
+hashModal.addEventListener("click", (e) => {
+  if (e.target === hashModal) hashModalClose();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !hashModal.hidden) hashModalClose();
 });
 
 $<HTMLInputElement>("chk-hash-group").addEventListener("change", () => {
@@ -2419,6 +2590,8 @@ function clearHashView() {
   cmpBEl.textContent = "…";
   hashResultsEl.innerHTML = "";
   cmpResultsEl.innerHTML = "";
+  hashModalInfo.textContent = "";
+  hashModalClose();
   hashBar.style.width = "0%";
   setHashStatus("");
   renderHashFiles();
@@ -3440,7 +3613,7 @@ listen("clear-all", () => {
 });
 
 const IMG_EXTS = ["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp", "gif"];
-const DOC_EXTS = [...IMG_EXTS, "pdf", "docx", "xlsx", "pptx", "udf", "odt", "ods", "odp", "epub",
+const DOC_EXTS = [...IMG_EXTS, "pdf", "docx", "xlsx", "xls", "pptx", "udf", "odt", "ods", "odp", "epub",
   "rtf", "txt", "md", "markdown", "csv", "tsv", "json", "jsonl", "ndjson", "log",
   "xml", "html", "htm", "sql", "srt", "vtt", "ini", "cfg", "yaml", "yml", "toml",
   "ps1", "bat", "cmd", "sh"];

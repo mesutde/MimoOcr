@@ -1,6 +1,6 @@
 [package]
 name = "mimo-ocr"
-version = "0.7.4"
+version = "0.7.5"
 description = "Açık kaynak, çevrimdışı, çoklu motorlu masaüstü OCR"
 edition = "2021"
 rust-version = "1.77"
@@ -34,6 +34,9 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 xcap = "0.7"
 arboard = "3"
 rfd = "0.17"
+calamine = { version = "0.30.1", default-features = false }
+quick-xml = "0.37"
+zip = { version = "4", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [

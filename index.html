@@ -168,6 +168,8 @@
             <label class="check"><input type="checkbox" id="chk-batch-group"> <span data-i18n="lblGroupByExt">Dosya formatına göre kaydet</span></label>
           </div>
           <div id="batch-progress-wrap"><div id="batch-progress-bar"></div></div>
+          <div id="batch-current" class="status"></div>
+          <pre id="batch-log" spellcheck="false"></pre>
           <div id="batch-outputs" class="filelist"></div>
         </section>
       </div>
@@ -390,10 +392,10 @@
           </div>
           <div class="row">
             <button id="btn-hash-run" class="primary" data-i18n="btnHashRun">Hash listesi oluştur</button>
+            <button id="btn-hash-show" data-i18n="btnHashShow">Sonuçları göster</button>
             <button id="btn-hash-save" data-i18n="btnHashSave">Raporu kaydet…</button>
           </div>
           <div id="hash-progress-wrap"><div id="hash-progress-bar"></div></div>
-          <div id="hash-results" class="filelist hash-results"></div>
 
           <div class="pane-title" id="cmp-title"><span data-i18n="cmpTitle">İki klasörü karşılaştır</span></div>
           <div class="tip" data-i18n="cmpTip">Aynı dosyanın iki klasördeki hash'i farklıysa dosya değişmiş demektir; rapora uyarı notu eklenir.</div>
@@ -457,6 +459,23 @@
   </div>
   <div id="file-ctx" class="ctx-menu" hidden>
     <button id="ctx-open-folder" type="button" data-i18n="ctxOpenFolder">Dosyanın bulunduğu klasöre git</button>
+  </div>
+  <div id="hash-modal" class="modal-backdrop" hidden>
+    <div class="modal hash-modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <strong data-i18n="hashModalTitle">Hash sonuçları</strong>
+        <button id="btn-hash-modal-close" class="rm" title="✕" data-i18n-title="btnClose">✕</button>
+      </div>
+      <div class="modal-body hash-modal-body">
+        <div id="hash-results" class="filelist hash-results"></div>
+      </div>
+      <div class="modal-foot">
+        <span id="hash-modal-info" class="muted"></span>
+        <div class="spacer"></div>
+        <button id="btn-hash-modal-save" data-i18n="btnHashSave">Raporu kaydet…</button>
+        <button id="btn-hash-modal-ok" class="primary" data-i18n="btnClose">Kapat</button>
+      </div>
+    </div>
   </div>
   <div id="batch-manage-modal" class="modal-backdrop" hidden>
     <div class="modal" role="dialog" aria-modal="true">
