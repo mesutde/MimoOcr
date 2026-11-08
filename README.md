@@ -19,15 +19,49 @@ analysis. No telemetry, no account, no internet required.
 
 ---
 
-## İndir / Download (v0.7.5)
+## İndir / Download (v0.7.6)
 
 | Paket / Package | Dosya / File |
 |---|---|
-| Kurulum (NSIS) | `Mimo.OCR_0.7.5_x64-setup.exe` |
-| Kurulum (MSI) | `Mimo.OCR_0.7.5_x64_en-US.msi` |
-| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.5.zip` |
+| Kurulum (NSIS) | `Mimo.OCR_0.7.6_x64-setup.exe` |
+| Kurulum (MSI) | `Mimo.OCR_0.7.6_x64_en-US.msi` |
+| Taşınabilir / Portable | `MimoOCR-portable-windows-x64-v0.7.6.zip` |
 
 Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All on [Releases](https://github.com/mesutde/MimoOcr/releases).
+
+## Yenilikler (v0.7.6)
+
+- **Doğrulama ekranı alt sekmeleri:** "Doğrulama" ve "İki klasörü karşılaştır"
+  artık ayrı alt sekmelerde gösterilir.
+- **Karşılaştırma tablosu + sıralama:** Sonuçlar `Yol / Durum / A / B` tablosu
+  olarak görüntülenebilir; "Farklıları en üste al" ile farklı/hata/sadece A-B
+  satırları öne alınır.
+- **Farklıları ayrı dosyaya kaydet:** Rapor kaydedilirken yalnızca farklı
+  satırlar `-farkli` ekli ikinci dosyaya yazılır.
+- **Son değişiklik tarihi:** Doğrulama raporlarına dosyanın son değişiklik
+  zamanı eklenebilir.
+- **Toplu çoklu format:** Markdown, TXT, PDF, Excel (XLSX) ve CSV birlikte
+  seçilebilir.
+- **Excel → JSON:** Toplu listede Excel varsa ve XLSX çıktısı seçili değilse,
+  Excel dosyaları ayrıca LLM dostu JSON olarak kaydedilebilir.
+- v0.7.5 özellikleri aynen korunuyor.
+
+## What's New (v0.7.6)
+
+- **Verify sub-tabs:** "Verify" and "Compare two folders" are now separate
+  sub-tabs.
+- **Comparison table + sorting:** Results can be shown as a
+  `Path / Status / A / B` table; "Put differences at the top" moves
+  different/error/only-A-B rows first.
+- **Save differences separately:** When saving a report, only differing rows are
+  written to a second file with a `-farkli` suffix.
+- **Last modified time:** Hash reports can include each file's last modified
+  time.
+- **Batch multi-format:** Markdown, TXT, PDF, Excel (XLSX) and CSV can be
+  selected together.
+- **Excel → JSON:** When a batch contains Excel files and XLSX output is not
+  selected, Excel files can also be saved as LLM-friendly JSON.
+- v0.7.5 features are preserved.
 
 ## Yenilikler (v0.7.5)
 
@@ -356,8 +390,8 @@ Hepsi [Releases](https://github.com/mesutde/MimoOcr/releases) sayfasında. / All
 
 ## Kurulum / Install (Windows)
 
-**NSIS:** `Mimo.OCR_0.7.5_x64-setup.exe` — çift tıkla, kur, aç. / Double-click, install, open.
-**MSI:** `Mimo.OCR_0.7.5_x64_en-US.msi` — kurumsal dağıtım / enterprise deployment.
+**NSIS:** `Mimo.OCR_0.7.6_x64-setup.exe` — çift tıkla, kur, aç. / Double-click, install, open.
+**MSI:** `Mimo.OCR_0.7.6_x64_en-US.msi` — kurumsal dağıtım / enterprise deployment.
 **Portable:** ZIP'i aç, `mimo-ocr.exe` çalıştır. Yanında `tessdata/`, `tesseract-runtime/`, `ffmpeg/`, `models.json`, `scripts/` gelir. / Unzip, run `mimo-ocr.exe`.
 
 > Not / Note: Video sekmesi **kurulumla gelen Python'u** kullanır (gerekirse `MIMO_PYTHON` ile başka yol verilebilir). Toplu Office/PDF için ek kuruluma gerek yoktur (reportlab/pypdf/openpyxl gömülü). / The Video tab uses the **bundled Python** (`MIMO_PYTHON` overrides). No extra installs needed.

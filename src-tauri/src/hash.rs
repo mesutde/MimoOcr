@@ -13,6 +13,8 @@ pub struct FileHash {
     pub path: String,
     pub name: String,
     pub size: u64,
+    /// Son değişiklik zamanı (UNIX epoch, milisaniye). Okunamazsa `None`.
+    pub modified_ms: Option<u64>,
     pub hashes: BTreeMap<String, String>,
     pub error: Option<String>,
 }
@@ -124,13 +126,23 @@ fn file_name_of(path: &Path) -> String {
         .unwrap_or_else(|| path.display().to_string())
 }
 
+fn modified_ms_of(path: &Path) -> Option<u64> {
+    std::fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+}
+
 fn make_hash(path: &Path, algos: &[String]) -> FileHash {
     let name = file_name_of(path);
+    let modified_ms = modified_ms_of(path);
     match hash_file(path, algos) {
         Ok((size, hashes)) => FileHash {
             path: path.display().to_string(),
             name,
             size,
+            modified_ms,
             hashes,
             error: None,
         },
@@ -138,6 +150,7 @@ fn make_hash(path: &Path, algos: &[String]) -> FileHash {
             path: path.display().to_string(),
             name,
             size: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
+            modified_ms,
             hashes: BTreeMap::new(),
             error: Some(e),
         },
@@ -436,6 +449,7 @@ mod tests {
             path: "x\\a.pdf".into(),
             name: "a.pdf".into(),
             size: 1,
+            modified_ms: None,
             hashes: a.clone(),
             error: None,
         };
@@ -443,6 +457,7 @@ mod tests {
             path: "y\\a.pdf".into(),
             name: "a.pdf".into(),
             size: 1,
+            modified_ms: None,
             hashes: b,
             error: None,
         };

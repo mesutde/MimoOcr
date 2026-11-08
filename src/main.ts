@@ -154,6 +154,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     optSeparate: "Ayrı ayrı", optCombined: "Birleştir",
     btnBatchRun: "Toplu başlat", btnClear: "Temizle",
     btnBatchManage: "Yönet…", lblGroupByExt: "Dosya formatına göre kaydet",
+    lblBatchExcelJson: "Excel dosyalarını ayrıca JSON olarak kaydet (LLM için)",
+    batchNeedFormat: "En az bir format seçin.",
     manageTitle: "Dosyaları yönet", manageSearchPh: "Dosya ara…",
     manageSelectAll: "Tümünü seç", manageSelectNone: "Hiçbirini seçme",
     manageTypes: "Formatlar", manageSelected: "{n} / {total} seçili",
@@ -171,6 +173,12 @@ const I18N: Record<Lang, Record<string, string>> = {
     cmpTitle: "İki klasörü karşılaştır",
     cmpTip: "Aynı dosyanın iki klasördeki hash'i farklıysa dosya değişmiş demektir; rapora uyarı notu eklenir.",
     btnCmpA: "Klasör A seç…", btnCmpB: "Klasör B seç…", btnCmpRun: "Karşılaştır", btnCmpSave: "Raporu kaydet…",
+    chkCmpTable: "Tabloda göster (Yol / Durum / A / B)",
+    chkCmpDiffFirst: "Farklıları en üste al",
+    chkCmpDiffSave: "Farklıları ayrı dosyaya kaydet",
+    lblHashMtime: "Son değişiklik tarihini ekle", lblMtime: "Son Değişiklik",
+    cmpNoDiffRows: "Farklı satır yok; ayrı dosya yazılmadı.",
+    msgDiffSaved: "Farklılar kaydedildi: ",
     hashComputing: "Hash hesaplanıyor…", hashNeedAlgo: "En az bir hash algoritması seçin.",
     hashNeedRun: "Önce hash listesini oluşturun.", cmpNeedBoth: "İki klasör seçin.",
     hashModalTitle: "Hash sonuçları",
@@ -263,6 +271,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     optSeparate: "Separate", optCombined: "Combined",
     btnBatchRun: "Start batch", btnClear: "Clear",
     btnBatchManage: "Manage…", lblGroupByExt: "Save by file type",
+    lblBatchExcelJson: "Also save Excel files as JSON (for LLMs)",
+    batchNeedFormat: "Select at least one format.",
     manageTitle: "Manage files", manageSearchPh: "Search files…",
     manageSelectAll: "Select all", manageSelectNone: "Select none",
     manageTypes: "Formats", manageSelected: "{n} / {total} selected",
@@ -280,6 +290,12 @@ const I18N: Record<Lang, Record<string, string>> = {
     cmpTitle: "Compare two folders",
     cmpTip: "If the same file has different hashes in the two folders, it has changed; a warning note is added to the report.",
     btnCmpA: "Choose folder A…", btnCmpB: "Choose folder B…", btnCmpRun: "Compare", btnCmpSave: "Save report…",
+    chkCmpTable: "Show as table (Path / Status / A / B)",
+    chkCmpDiffFirst: "Put differences at the top",
+    chkCmpDiffSave: "Save differences to a separate file",
+    lblHashMtime: "Include last modified time", lblMtime: "Last Modified",
+    cmpNoDiffRows: "No differing rows; separate file not written.",
+    msgDiffSaved: "Differences saved: ",
     hashComputing: "Computing hash…", hashNeedAlgo: "Select at least one hash algorithm.",
     hashNeedRun: "Build the hash list first.", cmpNeedBoth: "Choose both folders.",
     hashModalTitle: "Hash results",
@@ -399,6 +415,8 @@ function refreshDynamicTexts() {
   renderUdfFiles();
   renderVideoFiles();
   renderLiveRegion(lastLiveRect);
+  renderHashFiles();
+  if (cmpData) renderCompareResults(cmpData);
   if (!lastImageBase64) {
     imgWrap.innerHTML = `<span id="img-empty">${t("imgEmpty")}</span>`;
   }
@@ -444,6 +462,19 @@ document.querySelectorAll<HTMLButtonElement>(".tab").forEach((b) =>
       refreshLiveWindows();
       refreshLiveAudio();
     }
+  }),
+);
+
+// Doğrulama ekranı alt sekmeleri (hash listesi / klasör karşılaştırma)
+const vsubs: Record<string, HTMLElement> = {
+  hash: $("vsub-hash"),
+  cmp: $("vsub-cmp"),
+};
+document.querySelectorAll<HTMLButtonElement>(".subtab").forEach((b) =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".subtab").forEach((x) => x.classList.toggle("active", x === b));
+    const v = b.dataset.vsub!;
+    for (const [k, el] of Object.entries(vsubs)) el.hidden = k !== v;
   }),
 );
 
@@ -1504,11 +1535,35 @@ const batchFilesEl = $("batch-files");
 const batchOutputs = $("batch-outputs");
 const batchStatus = $("batch-status");
 const batchBar = $("batch-progress-bar");
-const selBatchFormat = $<HTMLSelectElement>("sel-batch-format");
 const selBatchMode = $<HTMLSelectElement>("sel-batch-mode");
 let batchPaths: string[] = [];
 let batchOutDir = "";
 let batchBusy = false;
+
+const BATCH_FORMAT_IDS: Record<string, string> = {
+  md: "chk-batch-fmt-md",
+  txt: "chk-batch-fmt-txt",
+  pdf: "chk-batch-fmt-pdf",
+  xlsx: "chk-batch-fmt-xlsx",
+  csv: "chk-batch-fmt-csv",
+};
+
+function selectedBatchFormats(): string[] {
+  return Object.entries(BATCH_FORMAT_IDS)
+    .filter(([, id]) => $<HTMLInputElement>(id).checked)
+    .map(([fmt]) => fmt);
+}
+
+/// Excel dosyası varsa ve Excel (XLSX) çıktısı seçili değilse JSON seçeneğini göster.
+function updateBatchExcelJsonVisibility() {
+  const row = $<HTMLElement>("batch-json-row");
+  const chk = $<HTMLInputElement>("chk-batch-excel-json");
+  const hasExcel = batchPaths.some((p) => /\.(xlsx|xls)$/i.test(p));
+  const xlsxSelected = $<HTMLInputElement>("chk-batch-fmt-xlsx").checked;
+  const show = hasExcel && !xlsxSelected;
+  row.hidden = !show;
+  if (!show) chk.checked = false;
+}
 
 const batchLogEl = $<HTMLElement>("batch-log");
 const batchCurrentEl = $<HTMLElement>("batch-current");
@@ -1585,7 +1640,12 @@ function renderBatchFiles() {
     batchFilesEl.appendChild(div);
   });
   ($("batch-outdir") as HTMLElement).textContent = batchOutDir || "…";
+  updateBatchExcelJsonVisibility();
 }
+
+Object.values(BATCH_FORMAT_IDS).forEach((id) =>
+  $<HTMLInputElement>(id).addEventListener("change", updateBatchExcelJsonVisibility),
+);
 
 batchFilesEl.addEventListener("click", (e) => {
   const b = (e.target as HTMLElement).closest("[data-rm]");
@@ -1911,6 +1971,11 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
     batchOutDir = sel;
     renderBatchFiles();
   }
+  const formats = selectedBatchFormats();
+  if (!formats.length) {
+    setBatchStatus(t("batchNeedFormat"), "err");
+    return;
+  }
   batchBusy = true;
   ($<HTMLButtonElement>("btn-batch-run")).disabled = true;
   batchOutputs.innerHTML = "";
@@ -1923,13 +1988,14 @@ $<HTMLButtonElement>("btn-batch-run").addEventListener("click", async () => {
     const dto = await invoke<BatchResult>("batch_process_files", {
       files: batchPaths,
       outDir: batchOutDir,
-      format: selBatchFormat.value,
+      formats,
       saveMode: selBatchMode.value,
       fileTitle: true,
       splitMode,
       splitCount: splitMode === "count" ? Math.round(splitVal) : null,
       splitMb: splitMode === "size" ? splitVal : null,
       groupByExt: ($("chk-batch-group") as HTMLInputElement).checked,
+      excelJson: $<HTMLInputElement>("chk-batch-excel-json").checked,
     });
     batchBar.style.width = "100%";
     setBatchStatus(`${dto.okCount}/${dto.items.length} → ${dto.outDir}`, dto.failCount ? "err" : "ok");
@@ -2029,6 +2095,7 @@ interface FileHash {
   path: string;
   name: string;
   size: number;
+  modified_ms?: number | null;
   hashes: Record<string, string>;
   error: string | null;
 }
@@ -2094,6 +2161,13 @@ function selectedHashAlgos(): string[] {
 
 function orderedKeys(algos: string[]): string[] {
   return HASH_ORDER.filter((a) => algos.includes(a));
+}
+
+function fmtMtime(ms?: number | null): string {
+  if (!ms) return "—";
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 function humanSize(n: number): string {
@@ -2198,6 +2272,9 @@ function hashModalClose() {
 function renderHashResults(rows: FileHash[]) {
   hashResultsEl.innerHTML = "";
   const grouping = $<HTMLInputElement>("chk-hash-group").checked;
+  const withMtime = $<HTMLInputElement>("chk-hash-mtime").checked;
+  const mtimeSuffix = (r: FileHash) =>
+    withMtime ? ` — ${t("lblMtime")}: ${fmtMtime(r.modified_ms)}` : "";
   const head = document.createElement("div");
   head.className = "muted";
   head.textContent = `${rows.length} ${t("lblFile").toLowerCase()} · ${orderedKeys(hashAlgosUsed).map(hashAlgoLabel).join(", ")}`;
@@ -2222,7 +2299,7 @@ function renderHashResults(rows: FileHash[]) {
       for (const r of arr) {
         const d = document.createElement("div");
         d.className = "hrow" + (r.error ? " diff" : "");
-        d.textContent = `  ${r.name} (${humanSize(r.size)}) — ${r.error ? r.error : fmtHashes(r, hashAlgosUsed)}`;
+        d.textContent = `  ${r.name} (${humanSize(r.size)})${mtimeSuffix(r)} — ${r.error ? r.error : fmtHashes(r, hashAlgosUsed)}`;
         d.title = r.path;
         hashResultsEl.appendChild(d);
       }
@@ -2231,7 +2308,7 @@ function renderHashResults(rows: FileHash[]) {
     for (const r of rows) {
       const d = document.createElement("div");
       d.className = "hrow" + (r.error ? " diff" : "");
-      d.textContent = `${r.name} (${humanSize(r.size)}) — ${r.error ? r.error : fmtHashes(r, hashAlgosUsed)}`;
+      d.textContent = `${r.name} (${humanSize(r.size)})${mtimeSuffix(r)} — ${r.error ? r.error : fmtHashes(r, hashAlgosUsed)}`;
       d.title = r.path;
       hashResultsEl.appendChild(d);
     }
@@ -2267,18 +2344,21 @@ function hashReportRows(): { group: string; r: FileHash }[] {
 function buildHashReport(format: string): string {
   const cols = orderedKeys(hashAlgosUsed);
   const grouping = $<HTMLInputElement>("chk-hash-group").checked;
+  const withMtime = $<HTMLInputElement>("chk-hash-mtime").checked;
+  const mtimeHead = withMtime ? [t("lblMtime")] : [];
+  const mtimeVals = (r: FileHash) => (withMtime ? [fmtMtime(r.modified_ms)] : []);
   const rows = hashReportRows();
 
   if (format === "csv") {
     const head = [
       ...(grouping ? [t("lblGroup")] : []),
-      t("lblFile"), t("lblPath"), t("lblSize"), ...cols.map(hashAlgoLabel),
+      t("lblFile"), t("lblPath"), t("lblSize"), ...mtimeHead, ...cols.map(hashAlgoLabel),
     ];
     const lines = [head.map(csvCell).join(",")];
     for (const { group, r } of rows) {
       lines.push([
         ...(grouping ? [group] : []),
-        r.name, r.path, r.size, ...cols.map((a) => r.hashes[a] ?? ""),
+        r.name, r.path, r.size, ...mtimeVals(r), ...cols.map((a) => r.hashes[a] ?? ""),
       ].map(csvCell).join(","));
     }
     return lines.join("\r\n") + "\r\n";
@@ -2287,13 +2367,13 @@ function buildHashReport(format: string): string {
   if (format === "txt") {
     const head = [
       ...(grouping ? [t("lblGroup")] : []),
-      t("lblFile"), t("lblPath"), t("lblSize"), ...cols.map(hashAlgoLabel),
+      t("lblFile"), t("lblPath"), t("lblSize"), ...mtimeHead, ...cols.map(hashAlgoLabel),
     ].join("\t");
     const lines = [`${t("hashReportTitle")}\t${nowStamp()}`, head];
     for (const { group, r } of rows) {
       lines.push([
         ...(grouping ? [group] : []),
-        r.name, r.path, r.size, ...cols.map((a) => r.hashes[a] ?? ""),
+        r.name, r.path, r.size, ...mtimeVals(r), ...cols.map((a) => r.hashes[a] ?? ""),
       ].join("\t"));
     }
     return lines.join("\r\n") + "\r\n";
@@ -2301,7 +2381,7 @@ function buildHashReport(format: string): string {
 
   const head = [
     ...(grouping ? [t("lblGroup")] : []),
-    t("lblFile"), t("lblPath"), t("lblSize"), ...cols.map(hashAlgoLabel),
+    t("lblFile"), t("lblPath"), t("lblSize"), ...mtimeHead, ...cols.map(hashAlgoLabel),
   ];
   const lines = [
     `# ${t("hashReportTitle")}`,
@@ -2314,7 +2394,7 @@ function buildHashReport(format: string): string {
   for (const { group, r } of rows) {
     const vals = [
       ...(grouping ? [group] : []),
-      r.name, r.path, r.size, ...cols.map((a) => r.hashes[a] ?? ""),
+      r.name, r.path, r.size, ...mtimeVals(r), ...cols.map((a) => r.hashes[a] ?? ""),
     ].map((v) => String(v).replace(/\|/g, "\\|"));
     lines.push(`| ${vals.join(" | ")} |`);
   }
@@ -2403,6 +2483,10 @@ $<HTMLInputElement>("chk-hash-group").addEventListener("change", () => {
   if (hashRows.length) renderHashResults(hashRows);
 });
 
+$<HTMLInputElement>("chk-hash-mtime").addEventListener("change", () => {
+  if (hashRows.length) renderHashResults(hashRows);
+});
+
 listen<Record<string, unknown>>("hash-progress", (ev) => {
   const p = ev.payload;
   const i = Number(p["index"] ?? 0);
@@ -2444,15 +2528,66 @@ function sideHashes(h: FileHash | null, algos: string[]): string {
     .join("; ");
 }
 
+function cmpOrderedEntries(entries: CompareEntry[]): CompareEntry[] {
+  if (!$<HTMLInputElement>("chk-cmp-diff-first").checked) return entries.slice();
+  const rank = (s: string) =>
+    s === "different" || s === "error" ? 0 : s === "only_a" || s === "only_b" ? 1 : 2;
+  return entries.slice().sort((a, b) => rank(a.status) - rank(b.status));
+}
+
+function cmpRowClass(status: string): string {
+  return status === "same" ? "ok" : status === "different" || status === "error" ? "diff" : "only";
+}
+
 function renderCompareResults(res: CompareResult) {
   cmpResultsEl.innerHTML = "";
   const head = document.createElement("div");
   head.className = "muted";
   head.textContent = `${res.same} ${t("stSame")} · ${res.different} ${t("stDiff")} · ${res.only_a} ${t("stOnlyA")} · ${res.only_b} ${t("stOnlyB")}${res.error ? ` · ${res.error} ${t("stError")}` : ""}`;
   cmpResultsEl.appendChild(head);
-  for (const e of res.entries) {
+  const entries = cmpOrderedEntries(res.entries);
+
+  if ($<HTMLInputElement>("chk-cmp-table").checked) {
+    const wrap = document.createElement("div");
+    wrap.className = "cmp-table-wrap";
+    const table = document.createElement("table");
+    table.className = "cmp-table";
+    const thead = document.createElement("thead");
+    const hr = document.createElement("tr");
+    for (const label of [t("lblPath"), t("lblStatus"), "A", "B"]) {
+      const th = document.createElement("th");
+      th.textContent = label;
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    for (const e of entries) {
+      const tr = document.createElement("tr");
+      tr.className = "st-" + e.status;
+      const tdPath = document.createElement("td");
+      tdPath.textContent = e.rel_path;
+      const tdStatus = document.createElement("td");
+      tdStatus.textContent = statusLabel(e.status);
+      const tdA = document.createElement("td");
+      tdA.textContent = sideHashes(e.a, cmpAlgosUsed);
+      const tdB = document.createElement("td");
+      tdB.textContent = sideHashes(e.b, cmpAlgosUsed);
+      tr.append(tdPath, tdStatus, tdA, tdB);
+      tr.title = `A: ${e.a?.path ?? "—"}\nB: ${e.b?.path ?? "—"}`;
+      if (e.a) attachCtx(tr, e.a.path);
+      else if (e.b) attachCtx(tr, e.b.path);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    cmpResultsEl.appendChild(wrap);
+    return;
+  }
+
+  for (const e of entries) {
     const d = document.createElement("div");
-    d.className = "hrow" + (e.status === "same" ? " ok" : e.status === "different" || e.status === "error" ? " diff" : " only");
+    d.className = "hrow " + cmpRowClass(e.status);
     let text = `${statusLabel(e.status)} · ${e.rel_path}`;
     if (e.status !== "same") {
       text += ` · A[${sideHashes(e.a, cmpAlgosUsed)}] B[${sideHashes(e.b, cmpAlgosUsed)}]`;
@@ -2464,6 +2599,13 @@ function renderCompareResults(res: CompareResult) {
     cmpResultsEl.appendChild(d);
   }
 }
+
+$<HTMLInputElement>("chk-cmp-table").addEventListener("change", () => {
+  if (cmpData) renderCompareResults(cmpData);
+});
+$<HTMLInputElement>("chk-cmp-diff-first").addEventListener("change", () => {
+  if (cmpData) renderCompareResults(cmpData);
+});
 
 async function runCompare() {
   if (cmpBusy) return;
@@ -2507,15 +2649,16 @@ async function runCompare() {
 
 $<HTMLButtonElement>("btn-cmp-run").addEventListener("click", runCompare);
 
-function buildCompareReport(format: string): string {
+function buildCompareReport(format: string, onlyDiff = false): string {
   const res = cmpData;
   if (!res) return "";
   const cols = orderedKeys(cmpAlgosUsed);
   const warn = res.different ? tFmt("warnDiff", { n: res.different }) : "";
+  const entries = cmpOrderedEntries(res.entries).filter((e) => !onlyDiff || e.status !== "same");
 
   if (format === "csv") {
     const lines = [[t("lblPath"), t("lblStatus"), t("colWarning"), "A", "B"].map(csvCell).join(",")];
-    for (const e of res.entries) {
+    for (const e of entries) {
       const note = e.status === "different" ? t("warnHashDiffRow")
         : e.status === "only_a" ? t("stOnlyA")
         : e.status === "only_b" ? t("stOnlyB")
@@ -2536,7 +2679,7 @@ function buildCompareReport(format: string): string {
     ];
     if (warn) lines.push(warn, "");
     lines.push([t("lblPath"), t("lblStatus"), "A", "B"].join("\t"));
-    for (const e of res.entries) {
+    for (const e of entries) {
       lines.push([e.rel_path, statusLabel(e.status), sideHashes(e.a, cols), sideHashes(e.b, cols)].join("\t"));
     }
     return lines.join("\r\n") + "\r\n";
@@ -2553,12 +2696,19 @@ function buildCompareReport(format: string): string {
   ];
   if (warn) lines.push(`> ${warn}`, "");
   lines.push(`| ${t("lblPath")} | ${t("lblStatus")} | A | B |`, "|---|---|---|---|");
-  for (const e of res.entries) {
+  for (const e of entries) {
     const cells = [e.rel_path, statusLabel(e.status), sideHashes(e.a, cols), sideHashes(e.b, cols)]
       .map((v) => String(v).replace(/\|/g, "\\|"));
     lines.push(`| ${cells.join(" | ")} |`);
   }
   return lines.join("\n") + "\n";
+}
+
+/// Aynı klasörde, uzantıdan önce ek alan ikinci dosya yolu üretir.
+function siblingPath(path: string, suffix: string): string {
+  const dot = path.lastIndexOf(".");
+  const slash = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
+  return dot > slash ? `${path.slice(0, dot)}${suffix}${path.slice(dot)}` : `${path}${suffix}`;
 }
 
 $<HTMLButtonElement>("btn-cmp-save").addEventListener("click", async () => {
@@ -2574,7 +2724,18 @@ $<HTMLButtonElement>("btn-cmp-save").addEventListener("click", async () => {
   if (typeof path !== "string") return;
   try {
     await invoke("save_text", { path, text: buildCompareReport(fmt) });
-    setHashStatus(t("msgSaved") + path, "ok");
+    let msg = t("msgSaved") + path;
+    if ($<HTMLInputElement>("chk-cmp-diff-save").checked) {
+      const diffs = cmpOrderedEntries(cmpData.entries).filter((e) => e.status !== "same");
+      if (!diffs.length) {
+        setHashStatus(msg + " · " + t("cmpNoDiffRows"), "ok");
+        return;
+      }
+      const diffPath = siblingPath(path, "-farkli");
+      await invoke("save_text", { path: diffPath, text: buildCompareReport(fmt, true) });
+      msg += " · " + t("msgDiffSaved") + diffPath;
+    }
+    setHashStatus(msg, "ok");
   } catch (e) {
     setHashStatus(String(e), "err");
   }

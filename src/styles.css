@@ -326,7 +326,29 @@ textarea:focus { border-color: rgba(91,140,255,.45); }
   transition: width .2s; }
 .doc-hash { font-size: 11.5px; color: var(--faint); font-family: "Cascadia Code", Consolas, monospace;
   word-break: break-all; padding: 0 2px; }
-#cmp-title { margin-top: 12px; }
+
+/* Doğrulama alt sekmeleri */
+.subtabs { display: flex; gap: 4px; margin: 10px 0 12px; border-bottom: 1px solid var(--border); }
+.subtab { padding: 6px 14px; background: transparent; border: 0; border-bottom: 2px solid transparent;
+  color: var(--muted); font-size: 12.5px; border-radius: 0; }
+.subtab:hover { color: var(--text); }
+.subtab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.vsub[hidden] { display: none; }
+
+/* Karşılaştırma tablosu */
+.cmp-table-wrap { border: 1px solid var(--border); border-radius: 8px; }
+.cmp-table { width: 100%; border-collapse: collapse; font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11.5px; }
+.cmp-table th, .cmp-table td { padding: 5px 8px; border-bottom: 1px solid var(--border);
+  vertical-align: top; text-align: left; }
+.cmp-table th { position: sticky; top: 0; background: var(--panel2); color: var(--muted);
+  font-weight: 600; white-space: nowrap; }
+.cmp-table td { color: var(--muted); word-break: break-all; }
+.cmp-table tr:last-child td { border-bottom: 0; }
+.cmp-table tr.st-same td { color: var(--green); }
+.cmp-table tr.st-different td, .cmp-table tr.st-error td { color: var(--red); }
+.cmp-table tr.st-only_a td, .cmp-table tr.st-only_b td { color: var(--faint); }
+.cmp-table tr:hover td { background: var(--accent-soft); }
 
 /* Hash sonuç modalı */
 .hash-modal { width: min(1040px, 100%); max-height: min(760px, 100%); }

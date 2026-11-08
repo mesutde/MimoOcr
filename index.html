@@ -134,12 +134,14 @@
           <div class="outdir-row"><span class="outdir-label" data-i18n="lblOutDir">Kaydedilecek klasör:</span><span id="batch-outdir">…</span></div>
           <div class="vgrid">
             <div class="field">
-              <label for="sel-batch-format" data-i18n="lblFormat">Format</label>
-              <select id="sel-batch-format">
-                <option value="md" selected>Markdown</option>
-                <option value="txt">TXT</option>
-                <option value="pdf">PDF</option>
-              </select>
+              <label data-i18n="lblFormat">Format</label>
+              <div class="checkrow">
+                <label class="check"><input type="checkbox" id="chk-batch-fmt-md" checked> Markdown</label>
+                <label class="check"><input type="checkbox" id="chk-batch-fmt-txt"> TXT</label>
+                <label class="check"><input type="checkbox" id="chk-batch-fmt-pdf"> PDF</label>
+                <label class="check"><input type="checkbox" id="chk-batch-fmt-xlsx"> Excel (XLSX)</label>
+                <label class="check"><input type="checkbox" id="chk-batch-fmt-csv"> CSV</label>
+              </div>
             </div>
             <div class="field">
               <label for="sel-batch-mode" data-i18n="lblSaveMode">Kayıt</label>
@@ -160,6 +162,9 @@
               <label for="inp-batch-split" data-i18n="lblSplitValue">Parça / MB</label>
               <input type="number" id="inp-batch-split" min="2" max="50" step="1" value="4">
             </div>
+          </div>
+          <div class="row" id="batch-json-row" hidden>
+            <label class="check"><input type="checkbox" id="chk-batch-excel-json"> <span data-i18n="lblBatchExcelJson">Excel dosyalarını ayrıca JSON olarak kaydet (LLM için)</span></label>
           </div>
           <div class="row">
             <button id="btn-batch-run" class="primary" data-i18n="btnBatchRun">Toplu başlat</button>
@@ -360,59 +365,73 @@
       <div id="view-hash" class="view" hidden>
         <section class="doc-pane">
           <div class="pane-title"><span data-i18n="tabVerify">Doğrulama</span><span id="hash-status" class="status"></span></div>
-          <div class="tip" data-i18n="hashTip">Dosyaların özet (hash) kodlarını üretir: MD5, SHA-1, SHA-256, CRC32. Belge doğrulamada SHA-256 standarttır; MD5/SHA-1 eski ve zayıftır, CRC32 yalnızca bütünlük kontrolüdür.</div>
-          <div class="row">
-            <button id="btn-hash-add" data-i18n="btnHashAdd">Dosya ekle…</button>
-            <button id="btn-hash-add-dir" data-i18n="btnHashAddDir">Klasör ekle…</button>
-            <button id="btn-hash-clear" data-i18n="btnClear">Temizle</button>
-            <label class="check"><input type="checkbox" id="chk-hash-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
+          <div class="subtabs">
+            <button class="subtab active" data-vsub="hash" data-i18n="tabVerify">Doğrulama</button>
+            <button class="subtab" data-vsub="cmp" data-i18n="cmpTitle">İki klasörü karşılaştır</button>
           </div>
-          <div id="hash-files" class="filelist"><span class="muted" data-i18n="batchNoFiles">Dosya yok</span></div>
-          <div class="vgrid">
-            <div class="field">
-              <label data-i18n="lblHashAlgos">Hash</label>
-              <div class="checkrow">
-                <label class="check"><input type="checkbox" id="chk-hash-sha256" checked> SHA-256</label>
-                <label class="check"><input type="checkbox" id="chk-hash-sha1"> SHA-1</label>
-                <label class="check"><input type="checkbox" id="chk-hash-md5"> MD5</label>
-                <label class="check"><input type="checkbox" id="chk-hash-crc32"> CRC32</label>
+          <div id="vsub-hash" class="vsub">
+            <div class="tip" data-i18n="hashTip">Dosyaların özet (hash) kodlarını üretir: MD5, SHA-1, SHA-256, CRC32. Belge doğrulamada SHA-256 standarttır; MD5/SHA-1 eski ve zayıftır, CRC32 yalnızca bütünlük kontrolüdür.</div>
+            <div class="row">
+              <button id="btn-hash-add" data-i18n="btnHashAdd">Dosya ekle…</button>
+              <button id="btn-hash-add-dir" data-i18n="btnHashAddDir">Klasör ekle…</button>
+              <button id="btn-hash-clear" data-i18n="btnClear">Temizle</button>
+              <label class="check"><input type="checkbox" id="chk-hash-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
+            </div>
+            <div id="hash-files" class="filelist"><span class="muted" data-i18n="batchNoFiles">Dosya yok</span></div>
+            <div class="vgrid">
+              <div class="field">
+                <label data-i18n="lblHashAlgos">Hash</label>
+                <div class="checkrow">
+                  <label class="check"><input type="checkbox" id="chk-hash-sha256" checked> SHA-256</label>
+                  <label class="check"><input type="checkbox" id="chk-hash-sha1"> SHA-1</label>
+                  <label class="check"><input type="checkbox" id="chk-hash-md5"> MD5</label>
+                  <label class="check"><input type="checkbox" id="chk-hash-crc32"> CRC32</label>
+                </div>
+              </div>
+              <div class="field">
+                <label for="sel-hash-format" data-i18n="lblFormat">Format</label>
+                <select id="sel-hash-format">
+                  <option value="md" selected>Markdown</option>
+                  <option value="csv">CSV</option>
+                  <option value="txt">TXT</option>
+                </select>
               </div>
             </div>
-            <div class="field">
-              <label for="sel-hash-format" data-i18n="lblFormat">Format</label>
-              <select id="sel-hash-format">
-                <option value="md" selected>Markdown</option>
-                <option value="csv">CSV</option>
-                <option value="txt">TXT</option>
-              </select>
+            <div class="row">
+              <label class="check"><input type="checkbox" id="chk-hash-group"> <span data-i18n="lblHashGroup">Aynı adlı farklı uzantıları yan yana karşılaştır (mesut.pdf ↔ mesut.md)</span></label>
+              <label class="check"><input type="checkbox" id="chk-hash-mtime"> <span data-i18n="lblHashMtime">Son değişiklik tarihini ekle</span></label>
             </div>
+            <div class="row">
+              <button id="btn-hash-run" class="primary" data-i18n="btnHashRun">Hash listesi oluştur</button>
+              <button id="btn-hash-show" data-i18n="btnHashShow">Sonuçları göster</button>
+              <button id="btn-hash-save" data-i18n="btnHashSave">Raporu kaydet…</button>
+            </div>
+            <div id="hash-progress-wrap"><div id="hash-progress-bar"></div></div>
           </div>
-          <div class="row">
-            <label class="check"><input type="checkbox" id="chk-hash-group"> <span data-i18n="lblHashGroup">Aynı adlı farklı uzantıları yan yana karşılaştır (mesut.pdf ↔ mesut.md)</span></label>
+          <div id="vsub-cmp" class="vsub" hidden>
+            <div class="tip" data-i18n="cmpTip">Aynı dosyanın iki klasördeki hash'i farklıysa dosya değişmiş demektir; rapora uyarı notu eklenir.</div>
+            <div class="row">
+              <button id="btn-cmp-a" data-i18n="btnCmpA">Klasör A seç…</button>
+              <span id="cmp-a" class="cmp-path">…</span>
+            </div>
+            <div class="row">
+              <button id="btn-cmp-b" data-i18n="btnCmpB">Klasör B seç…</button>
+              <span id="cmp-b" class="cmp-path">…</span>
+            </div>
+            <div class="row">
+              <label class="check"><input type="checkbox" id="chk-cmp-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
+            </div>
+            <div class="row">
+              <label class="check"><input type="checkbox" id="chk-cmp-table"> <span data-i18n="chkCmpTable">Tabloda göster (Yol / Durum / A / B)</span></label>
+              <label class="check"><input type="checkbox" id="chk-cmp-diff-first"> <span data-i18n="chkCmpDiffFirst">Farklıları en üste al</span></label>
+              <label class="check"><input type="checkbox" id="chk-cmp-diff-save"> <span data-i18n="chkCmpDiffSave">Farklıları ayrı dosyaya kaydet</span></label>
+            </div>
+            <div class="row">
+              <button id="btn-cmp-run" class="primary" data-i18n="btnCmpRun">Karşılaştır</button>
+              <button id="btn-cmp-save" data-i18n="btnCmpSave">Raporu kaydet…</button>
+            </div>
+            <div id="cmp-results" class="filelist hash-results"></div>
           </div>
-          <div class="row">
-            <button id="btn-hash-run" class="primary" data-i18n="btnHashRun">Hash listesi oluştur</button>
-            <button id="btn-hash-show" data-i18n="btnHashShow">Sonuçları göster</button>
-            <button id="btn-hash-save" data-i18n="btnHashSave">Raporu kaydet…</button>
-          </div>
-          <div id="hash-progress-wrap"><div id="hash-progress-bar"></div></div>
-
-          <div class="pane-title" id="cmp-title"><span data-i18n="cmpTitle">İki klasörü karşılaştır</span></div>
-          <div class="tip" data-i18n="cmpTip">Aynı dosyanın iki klasördeki hash'i farklıysa dosya değişmiş demektir; rapora uyarı notu eklenir.</div>
-          <div class="row">
-            <button id="btn-cmp-a" data-i18n="btnCmpA">Klasör A seç…</button>
-            <span id="cmp-a" class="cmp-path">…</span>
-          </div>
-          <div class="row">
-            <button id="btn-cmp-b" data-i18n="btnCmpB">Klasör B seç…</button>
-            <span id="cmp-b" class="cmp-path">…</span>
-          </div>
-          <div class="row">
-            <label class="check"><input type="checkbox" id="chk-cmp-recursive" checked> <span data-i18n="lblRecursive">Alt klasörleri de ara</span></label>
-            <button id="btn-cmp-run" class="primary" data-i18n="btnCmpRun">Karşılaştır</button>
-            <button id="btn-cmp-save" data-i18n="btnCmpSave">Raporu kaydet…</button>
-          </div>
-          <div id="cmp-results" class="filelist hash-results"></div>
         </section>
       </div>
     </main>
